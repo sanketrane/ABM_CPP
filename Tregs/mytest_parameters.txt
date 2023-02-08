@@ -1,0 +1,27 @@
+10.
+1.
+11.
+1.
+-999999.
+0.0120947136
+0.
+0.00156085616
+-0.0027623903642
+
+
+
+
+
+
+
+// parameters (all floats)
+// 0: 4 or 8 (CD4 or CD8)
+// 1: N0 (to be scaled by 0.005 to get actual cell numbers)
+// 2: T0 (start time for simulations)
+// 3: TMAX
+// 4: g0  pop density at age zero at time T0. # thymic export rate at time t=1 = C* SP(1)  =  N(t=1)g(0)
+// 5: N_densitydependence (scale for density dep div or loss - in "true" physiological numbers
+// 6: delta0 (base death rate for cells of age zero)
+// 7: r_delta (death rate goes with cell age as exp(-r_delta * age))
+// 8: rho_0 (base death rate for cells of age zero)
+// 9: r_rho (div rate goes with cell age as exp(-r_rho * age))
