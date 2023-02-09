@@ -69,7 +69,6 @@ class cell
 private:
     int cloneID; // 1...CLONEUNIVERSESIZE
     float ki67_intens_log; // normalized Ki67 expression. 
-    bool donor_derived; // whether its a donor or host BM derived
     bool location_thymus; // whether its a thymic or peripheral Treg
     int ndivs; // number of divisions since differentiation into Treg phenotype in the thymus
     float last_division_time; // time at which this cell last divided
@@ -77,9 +76,9 @@ private:
 
 public:
     cell(); // default constructor fn.
-    cell(int p1, float p2, bool p3, bool p4, int p5, float p6, float p7); // general constructor fn.
+    cell(int p1, float p2, bool p3, bool p4, int p5, float p6, float p7)); // general constructor fn.
     void set_cloneID(int x){cloneID=x;}
-    void set_ki67_intens_log(float x){ki67_intens_log=x;}
+    void set_ki67_intens_log(float x){ki67_intens_norm=x;}
     void set_donor_derived(bool x){donor_derived=x;}
     void set_location_thymus(bool x){location_thymus=x;}
     void set_ndivs(int i){ndivs=i;}
@@ -87,7 +86,7 @@ public:
     void set_export_time (float x) {export_time=x;}
 
     int get_cloneID() {return(cloneID);}
-    float get_ki67_intens_log() {return(ki67_intens_log);}
+    float ki67_intens_log() {return(logKi67_det);}
     bool get_donor_derived(){return (donor_derived);}
     bool get_location_thymus(){return (location_thymus);}
     int get_ndivs() {return(ndivs);}
@@ -97,7 +96,7 @@ public:
 
 cell::cell(){ //default constructor
     cloneID=0;
-    ki67_intens_log=randunif<double>(0, LOG_KPOS_THRESHOLD);    // for a given cell ki67 exoression is chosen from a uniform distribution between 0 and exp(-1)
+    ki67_intens_norm=randunif<double>(0, LOG_KPOS_THRESHOLD);    // for a given cell ki67 exoression is chosen from a uniform distribution between 0 and exp(-1)
     donor_derived=false;
     location_thymus=true;
     ndivs=0;
@@ -107,7 +106,7 @@ cell::cell(){ //default constructor
 
 cell::cell(int p1, float p2, bool p3, bool p4, int p5, float p6, float p7){ //general constructor
     cloneID=p1;
-    ki67_intens_log=p2;
+    ki67_intens_norm=p2;
     donor_derived=p3;
     location_thymus=p4;
     ndivs=p5;
@@ -127,41 +126,50 @@ cell::cell(int p1, float p2, bool p3, bool p4, int p5, float p6, float p7){ //ge
 // 8: rho_0 (base death rate for cells of age zero)
 // 9: r_rho (div rate goes with cell age as exp(-r_rho * age))
 
+float lossrate(int poolsize, float current_time, float cell_age, float time_since_last_division, int ndivs, float params[]){
+    float delta0=params[6];
+    float r_delta= params[7];
+    float host_age_at_export = current_time - cell_age;
+    float N_densitydependence = params[5]; // work with "true" physiological numbers
+    if (host_age_at_export < 0. ) host_age_at_export = 0.;
+    // insert function etc. here to calculate host age dependent rho_0
+    //return (delta0 * exp(-1.* cell_age * r_delta));
+    return delta0;
+}
+
+float divrate(int poolsize, float current_time, float cell_age, float time_since_last_division, int ndivs, float params[]){
+    float rho0=params[8];
+    float r_rho= params[9];
+    float host_age_at_export = current_time - cell_age;
+    float N_densitydependence = params[5]; // work with "true" physiological numbers
+    if (host_age_at_export < 0. ) host_age_at_export = 0.;
+    // if (host_age_at_export <30.) rho0=rho0*0.02; else rho0=rho0*1.2;
+    // insert function etc. here to calculate host age dependent rho_0
+    //return (rho0 * exp(-1.* cell_age * r_rho));
+    return rho0;
+}
 
 float sp_numbers(float t, float params[]){ // mature SP thymocyte numbers - spline defs
     // these are true numbers - need to scale down for simulation (done elsewhere)
-    float dpt0, T0=params[1], sp_numbers, theta0, nu;
+    float  dpt0, T0=params[2], sp_numbers, theta0, nu;
 
     // define the splines for SP4 and SP8
-    theta0  = 6.4;  nu = 0.0024;
+    theta0  = 6.4;  nu = 0.0024;}
     dpt0 = t - T0;     // days post t0
     if (dpt0<0.) dpt0=0.;
     sp_numbers = pow(10, theta0) * exp(-1 * nu * dpt0); 
     return sp_numbers;
-}
 
 int update(cell *fromlist[], cell *tolist[], cell cellstore[], int clonerecord[], int *poolsize, cell *spacelist[],
             int *spacelistlength, float current_time, float params[], float THYMIC_EXPORT_RATE_CONSTANT)
 {
     int i, j=0, cells_in, cloneID, ndivs, updated_poolsize=*poolsize, bb; // j tracks number of live cells in this cycle
-    float runif, age, ki67_intens_log, last_division_time, time_since_last_division, export_time, p_div, p_loss;
+    float runif, age, donor_derived, ki67_intens_norm, location_thymus, last_division_time, time_since_last_division, export_time, p_div, p_loss;
     cell *this_cell;
     cell *new_cell_location;
-    bool dead, divide, location_thymus, donor_derived;
+    bool dead, divide; location_thymus; donor_derived;
 
     std::cout << std::boolalpha;
-
-    // stock random number libraries
-    std::random_device rd;
-    std::mt19937 generator(rd()); // use the mersenne twister as the underlying RN generator
-    // or ... fixed seed
-    // std::mt19937 generator(0);
-
-    // uniform distribution between 0 and 1; call with uniformrandom(generator)
-    std::uniform_real_distribution<> uniformrandom(0, 1);
-
-    // call these with Normalized_ki67_dist_SP(generator)
-    std::uniform_real_distribution<> Ki67_dist_SP(0, exp(-1)); 
 
     for(i=0;i<*poolsize;i++){ // loop through all cells alive at the start of this timestep
         // fromlist is a list of pointers to live cells... it should have no gaps in it.
@@ -169,25 +177,25 @@ int update(cell *fromlist[], cell *tolist[], cell cellstore[], int clonerecord[]
 
         // get this cell's attributes
         cloneID=(*this_cell).get_cloneID(); //similar to python syntax?
-        ki67_intens_log= (*this_cell).get_ki67_intens_log();
-        donor_derived= (*this_cell).get_donor_derived();
-        location_thymus= (*this_cell).get_location_thymus();
+        ki67_intens_norm= (*this_cell).get_ki67_intens_norm();
+        organ_thymus= (*this_cell).get_organ_thymus();
         ndivs=(*this_cell).get_ndivs();
-        last_division_time=(*this_cell).get_last_division_time();
+        last_division_time= - log(ki67_intens_norm) * 3.5;
         export_time=(*this_cell).get_export_time();
         age=current_time-export_time;
         time_since_last_division = current_time - last_division_time;
 
-        // update loggfp and logki67 values - linear drop on log scale
-        ki67_intens_log  = ki67_intens_log - TSTEP*KI67_LOSS_RATE; // Ki67 drops with time
-        (*this_cell).set_ki67_intens_log(ki67_intens_log);
+        if (time_since_last_division<0){
+            organ_thymus=true;
+        }
 
-        cout << "I am clone number " << cloneID << " and I come from donor is " << donor_derived 
+        cout << "I am clone number " << cloneID << " and I am in thymus is " << organ_thymus 
         << ". I am " << age << " days old with " << ndivs << " past-divisions with the last being " 
-        << time_since_last_division << " days ago. My Ki67 intensity is " << ki67_intens_log << endl;
+        << time_since_last_division << " days ago. My Ki67 intensity is " << ki67_intens_norm << endl;
     }
 
-    cout << " I am timestep" << current_time << endl;
+    bb=runif<double>(0, 1.9);
+    cout << " I am update at " << current_time << " with random int " << bb << endl;
     return 0;
 }
 
@@ -225,7 +233,7 @@ int main (int argc, char * const argv[]) {
     //uniform distribution between 0 and 1; call with uniformrandom(generator)
     std::uniform_real_distribution<> uniformrandom(0, 1);
 
-    PAR_FILE.open("mytest_parameters.txt");
+    PAR_FILE.open(parameter_fullpath);
     for(i=0; i<10; i++)  PAR_FILE >> params[i];
     PAR_FILE.close();
 
@@ -236,8 +244,6 @@ int main (int argc, char * const argv[]) {
     g0=params[3];
     sp_numbers_at_T0 = sp_numbers(T0, params);
     THYMIC_EXPORT_RATE_CONSTANT = ((float) poolsize)*g0/(sp_numbers_at_T0 * SCALE_OUTPUT);
-
-    cout << " I started at " << T0 << " I will run till " << TMAX << endl;
 
     // Set up pre-existing cells at time T0
     // initialise the list of pointers to each cell, and do some initialising of Ki67 and GFP and age at T0.
