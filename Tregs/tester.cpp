@@ -6,12 +6,15 @@ using namespace std;
 
 
 int main () {
-  int i=0, j=2, k;
-  double l=0.0, m=0.1, n;
-  k=randunif<double>(i,j);
-  n=randunif<double>(l,m);
+  int x=4, y=1, k;
+  k=randnorm<double>(x,y);
   cout << k << endl;
-  cout << n << endl;
+
+  double xd, yd, n;
+  cout << "Enter Mean and SD: " << endl;
+  cin >> xd >> yd;
+  n=randnorm<double>(xd,yd);
+  cout << "Your sample from mean " << xd << " and sd " << yd << " is: " << n << endl;
 
   cout << "Current path is " << std::filesystem::current_path() << '\n'; 
   return 0;

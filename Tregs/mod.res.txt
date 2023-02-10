@@ -1,0 +1,27 @@
+ I started at 0 I will run till 10
+0.4
+I am clone number 7 and I come from donor is false. I am 0.4 days old. I divided 0 many times, most recently 99999.4 days ago. My Ki67 intensity is 1.4738
+I am clone number 49 and I come from donor is false. I am 0.4 days old. I divided 0 many times, most recently 99999.4 days ago. My Ki67 intensity is 1.35994
+I am clone number 73 and I come from donor is false. I am 0.4 days old. I divided 0 many times, most recently 99999.4 days ago. My Ki67 intensity is 1.14606
+I am clone number 58 and I come from donor is false. I am 0.4 days old. I divided 0 many times, most recently 99999.4 days ago. My Ki67 intensity is 1.60308
+I am clone number 30 and I come from donor is false. I am 0.4 days old. I divided 0 many times, most recently 99999.4 days ago. My Ki67 intensity is 1.18748
+I am clone number 72 and I come from donor is false. I am 0.4 days old. I divided 0 many times, most recently 99999.4 days ago. My Ki67 intensity is 1.32193
+I am clone number 44 and I come from donor is false. I am 0.4 days old. I divided 0 many times, most recently 99999.4 days ago. My Ki67 intensity is 1.14745
+I am clone number 78 and I come from donor is false. I am 0.4 days old. I divided 0 many times, most recently 99999.4 days ago. My Ki67 intensity is 1.17659
+I am clone number 23 and I come from donor is false. I am 0.4 days old. I divided 0 many times, most recently 99999.4 days ago. My Ki67 intensity is 1.3048
+I am clone number 9 and I come from donor is false. I am 0.4 days old. I divided 0 many times, most recently 99999.4 days ago. My Ki67 intensity is 1.62398
+I am new cell number 0 and clone# 40. My Ki67 intensity is 0.166255
+I am new cell number 1 and clone# 65. My Ki67 intensity is 0.73893
+I am new cell number 2 and clone# 92. My Ki67 intensity is 0.0233577
+I am new cell number 3 and clone# 42. My Ki67 intensity is 0.153507
+0.8
+I am clone number 7 and I come from donor is false. I am 0.8 days old. I divided 0 many times, most recently 99999.8 days ago. My Ki67 intensity is 1.31464
+I am clone number 49 and I come from donor is false. I am 0.8 days old. I divided 1 many times, most recently 0.4 days ago. My Ki67 intensity is 0.892003
+I am clone number 73 and I come from donor is false. I am 0.8 days old. I divided 0 many times, most recently 99999.8 days ago. My Ki67 intensity is 1.02229
+I am clone number 58 and I come from donor is false. I am 0.8 days old. I divided 1 many times, most recently 0.4 days ago. My Ki67 intensity is 0.892003
+I am clone number 30 and I come from donor is false. I am 0.8 days old. I divided 0 many times, most recently 99999.8 days ago. My Ki67 intensity is 1.05924
+I am clone number 72 and I come from donor is false. I am 0.8 days old. I divided 0 many times, most recently 99999.8 days ago. My Ki67 intensity is 1.17916
+I am clone number 44 and I come from donor is false. I am 0.8 days old. I divided 0 many times, most recently 99999.8 days ago. My Ki67 intensity is 1.02353
+I am clone number 78 and I come from donor is false. I am 0.8 days old. I divided 1 many times, most recently 0.4 days ago. My Ki67 intensity is 0.892003
+I am clone number 23 and I come from donor is false. I am 0.8 days old. I divided 1 many times, most recently 0.4 days ago. My Ki67 intensity is 0.892003
+I am clone number 40 and I come from donor is false. I am 0.4 days old. I divided 0 many times, most recently 1e+06 days ago. My Ki67 intensity is 1.05334
