@@ -1,5 +1,6 @@
 #include <iostream>
 #include "custom_functions.cpp"
+#include <filesystem>
 
 using namespace std;
 
@@ -7,9 +8,11 @@ using namespace std;
 int main () {
   int i=0, j=2, k;
   double l=0.0, m=0.1, n;
-  k=runif<double>(i,j);
-  n=runif<double>(l,m);
+  k=randunif<double>(i,j);
+  n=randunif<double>(l,m);
   cout << k << endl;
   cout << n << endl;
+
+  cout << "Current path is " << std::filesystem::current_path() << '\n'; 
   return 0;
 }

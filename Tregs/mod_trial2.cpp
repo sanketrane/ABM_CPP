@@ -189,9 +189,9 @@ int update(cell *fromlist[], cell *tolist[], cell cellstore[], int clonerecord[]
             organ_thymus=true;
         }
 
-        cout << "I am clone number " << cloneID << " and I am in thymus is " << organ_thymus 
+        cout << "I am clone number " << cloneID << " and I come from donor is " << donor_derived 
         << ". I am " << age << " days old with " << ndivs << " past-divisions with the last being " 
-        << time_since_last_division << " days ago. My Ki67 intensity is " << ki67_intens_norm << endl;
+        << time_since_last_division << " days ago. My Ki67 intensity is " << ki67_intens_log << endl;
     }
 
     bb=runif<double>(0, 1.9);
