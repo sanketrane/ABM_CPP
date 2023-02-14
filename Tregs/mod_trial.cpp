@@ -43,7 +43,9 @@ namespace fs = std::filesystem;
 //setting current WD and filepaths for input and output
 auto wdir = fs::current_path();
 fs::path parfile ("mytest_parameters.txt");
+fs::path outfile ("mytest_output.csv");
 fs::path fullparfile_path = wdir / parfile;
+fs::path fulloutfile_path = wdir / outfile;
 
 // defining fixed variables and parameters
 # define SCALE_OUTPUT 0.005f // Scale N0 and influx by this number to get actual simulated cell numbers
@@ -98,7 +100,7 @@ public:
 
 cell::cell(){ //default constructor
     cloneID=0;
-    ki67_intens_norm=randnorm<double>(KPOS_THRESHOLD, 0.1);    // for a given cell ki67 exoression is chosen from a normal distribution around the mean = KPOS_THRESHOLD with a narrow variance -- this needs redfinition!!!
+    ki67_intens_norm=randunif<float>(0, 1);    // for a given cell ki67 exoression is chosen from a uniform distribution -- this needs redfinition!!!
     donor_derived=false;
     location_thymus=true;
     ndivs=0;
@@ -128,56 +130,65 @@ cell::cell(int p1, float p2, bool p3, bool p4, int p5, float p6, float p7){ //ge
 // 8: rho_0 (base death rate for cells of age zero)
 // 9: r_rho (div rate goes with cell age as exp(-r_rho * age))
 
-
-float sp_numbers(float t, float params[]){ // mature SP thymocyte numbers - spline defs
+ // spline1 --
+float sp_numbers(float t, float params[]){ 
     // these are true numbers - need to scale down for simulation (done elsewhere)
-    float dpt0, T0=params[1], sp_numbers, theta0, nu;
+    float dpt0, T0=params[1], sp_numbers, theta0, nu, psi=params[4];
 
-    // define the splines for SP4 and SP8
+    // thymic FoxP3 negative SP4 T cell numbers - spline defs
     theta0  = 6.4;  nu = 0.0024;
     dpt0 = t - T0;     // days post t0
-    if (dpt0<0.) dpt0=0.;
-    sp_numbers = pow(10, theta0) * exp(-1 * nu * dpt0); 
+    if (dpt0<0.0) dpt0=0.0;
+    sp_numbers = psi * pow(10.0, theta0) * exp(-1.0 * nu * dpt0); 
     return sp_numbers;
 }
 
+ // spline2 --
+float chi_spline(float t) {
+   // gives fraction of donor in the thymic FoxP3 negative SP4 T cells 
+   float chi_value, chiEst, qEst;
+
+   // spline def for chimerism
+   chiEst = 0.816; qEst = 0.063;
+   if (t - 10.0 < 0.0){              // assumption: no donor cells seen in FoxP3neg SP4 compartment for ~ 10 days
+     chi_value = 0.0;
+   } else {
+     chi_value = chiEst * (1.0 - exp(-qEst * (t - 10.0)));
+   }
+   return chi_value;
+ }
+
 float lossrate(int poolsize, float current_time, float cell_age, float time_since_last_division, int ndivs, float params[]){
-    float delta0=params[5];
-    float r_delta= params[6];
+    // parame defs
+    float delta0=params[5]; float r_delta= params[6];  
+    float N_densitydependence = params[7]; // work with "true" physiological numbers
     float host_age_at_export = current_time - cell_age;
-    float N_densitydependence = params[4]; // work with "true" physiological numbers
+    
     if (host_age_at_export < 0. ) host_age_at_export = 0.;
-    // insert function etc. here to calculate host age dependent rho_0
     //return (delta0 * exp(-1.* cell_age * r_delta));
     return delta0;
 }
 
 float divrate(int poolsize, float current_time, float cell_age, float time_since_last_division, int ndivs, float params[]){
-    float rho0=params[7];
-    float r_rho= params[8];
+    // parame defs
+    float rho0=params[8]; float r_rho= params[9];
+    float N_densitydependence = params[7]; // work with "true" physiological numbers
     float host_age_at_export = current_time - cell_age;
-    float N_densitydependence = params[4]; // work with "true" physiological numbers
+
     if (host_age_at_export < 0. ) host_age_at_export = 0.;
-    // if (host_age_at_export <30.) rho0=rho0*0.02; else rho0=rho0*1.2;
-    // insert function etc. here to calculate host age dependent rho_0
     //return (rho0 * exp(-1.* cell_age * r_rho));
     return rho0;
 }
 
 
-int update(cell *fromlist[], cell *tolist[], cell cellstore[], int clonerecord[], int *poolsize, cell *spacelist[],
-            int *spacelistlength, float current_time, float params[], float THYMIC_EXPORT_RATE_CONSTANT)
-{
-    int i, j=0, cells_in, cloneID, ndivs, updated_poolsize=*poolsize, bb; // j tracks number of live cells in this cycle
+void update(cell *fromlist[], cell *tolist[], cell cellstore[], int clonerecord[], int *poolsize, cell *spacelist[],
+            int *spacelistlength, float current_time, float params[], float THYMIC_EXPORT_RATE_CONSTANT){
+    int i, j=0, cells_in, cloneID, ndivs, updated_poolsize; // j tracks number of live cells in this cycle
     float matureSP_Ki67pos_frac, runif, age, updated_age, ki67_intens_norm, last_division_time, time_since_last_division, export_time, p_div, p_loss;
-    cell *this_cell;
-    cell *new_cell_location;
     bool dead, divide, location_thymus, donor_derived;
-    
-    std::cout << std::boolalpha;
+    cell *this_cell; cell *new_cell_location;    // definitions for new and prexisting cells using the class cell
 
-    // call these with Normalized_ki67_dist_SP(generator)
-    float Ki67_dist_SP=randunif<double>(0, exp(-1)); 
+    updated_poolsize = *poolsize; 
 
     for(i=0;i<*poolsize;i++){ // loop through all cells alive at the start of this timestep
         // fromlist is a list of pointers to live cells... it should have no gaps in it.
@@ -195,7 +206,7 @@ int update(cell *fromlist[], cell *tolist[], cell cellstore[], int clonerecord[]
         time_since_last_division = current_time - last_division_time;
 
         // update loggfp and logki67 values - linear drop on log scale
-        ki67_intens_norm  = ki67_intens_norm - TSTEP*KI67_LOSS_RATE; // Ki67 drops with time
+        ki67_intens_norm  = ki67_intens_norm * exp(- TSTEP*KI67_LOSS_RATE); // Ki67 drops with time
         (*this_cell).set_ki67_intens_norm(ki67_intens_norm);
 
         // Now decide what the cell does this timestep
@@ -212,8 +223,8 @@ int update(cell *fromlist[], cell *tolist[], cell cellstore[], int clonerecord[]
         //if(runif>(1-p_div) && time_since_last_division>0.2) divide=true;
         if(runif>(1-p_div)) divide=true;
         
-        //cout << "clone# " << cloneID << "div prop: " << 1-p_div << " divided: " << divide <<  " death prop: " << p_loss << " dead: "<< dead << " dice: " << runif << endl;
-
+        //cout << "clone# " << cloneID << " div prop: " << 1-p_div << " divided: " << divide <<  " death prop: " << p_loss << " dead: "<< dead << " dice: " << runif <<  endl;
+        
         if(dead){
             divide=false; // just in case of shenanigans with the probabilities above
             updated_poolsize--; // one less cell
@@ -252,11 +263,14 @@ int update(cell *fromlist[], cell *tolist[], cell cellstore[], int clonerecord[]
             (*new_cell_location).set_ndivs(ndivs+1);
             (*new_cell_location).set_export_time(export_time); // time that ancestor left the thymus
             (*new_cell_location).set_last_division_time(current_time);
-            (*new_cell_location).set_ki67_intens_norm(1.); // same as sibling
+            (*new_cell_location).set_ki67_intens_norm(1.); // max Ki67 expression = 1 
             (*new_cell_location).set_location_thymus(false); // progeny leaves thymus after division
-            (*new_cell_location).set_donor_derived(false); // one progent leaves thymus after division
+            (*new_cell_location).set_donor_derived((*this_cell).get_donor_derived()); // same as parent and sibling
             j=j+2; // count 2 cells here
+
+            cout << "Clone ID: " << (*new_cell_location).get_cloneID() << " Donor status: " << (*new_cell_location).get_donor_derived() << " Ki67 expression: " << (*new_cell_location).get_ki67_intens_norm() << endl;
         }
+
         if(!dead && !divide) { //  survives and does nothing
             // if it's Ki67_stoch positive, does it become Ki67_stoch neg?
             //if((*this_cell).get_Ki67_stoch()){
@@ -266,62 +280,66 @@ int update(cell *fromlist[], cell *tolist[], cell cellstore[], int clonerecord[]
             *(tolist+j)=*(fromlist+i);
             j++; // count one more cell
         }
-
-
         updated_age=current_time -  (*this_cell).get_export_time();
-
-        cout << "I am clone number " << (*this_cell).get_cloneID() << " and I come from donor is " << (*this_cell).get_donor_derived() 
-        << ". I am " << updated_age << " days old and reside in " << (*this_cell).get_location_thymus() << " . I divided " << (*this_cell).get_ndivs() 
-        << " many times. My Ki67 intensity is " << (*this_cell).get_ki67_intens_norm() << " and my sibling's Ki67 intensity is " << (*new_cell_location).get_ki67_intens_norm() << endl;
     }
 
-    //////////////////////////////////////////
+    ////////////////////////////////////////////
     // now add new cells from the thymus (integer)
     // we work in rescaled numbers (i.e. scaled down from "true" numbers)
-    //////////////////////////////////////////
+    ////////////////////////////////////////////
 
-    //cells_in = lrint( THYMIC_EXPORT_RATE_CONSTANT * sp_numbers(current_time, params) * SCALE_OUTPUT * TSTEP);
-//
-    //for(i=0;i<cells_in;i++){
-    //    updated_poolsize++;
-    //    cloneID=rand() % CLONEUNIVERSESIZE; // choose random clonotype
-    //    if(*spacelistlength==0){
-    //        // there are no gaps in the array cellstore, so just add onto the end
-    //        new_cell_location=cellstore + updated_poolsize -1;
-    //    }
-    //    else
-    //    {
-    //        new_cell_location=spacelist[(*spacelistlength) -1];// space on the top of the stack
-    //        (*spacelistlength)--; //remove this space from the stack
-    //    }
-    //    tolist[j]=new_cell_location;
-    //    j++;
-    //    (*(clonerecord+cloneID))++; // record a new cell of this clone
-//
-    //    //make random number to determine whether new cell is Ki67 high or low,
-    //    // depending on Ki67 expression in SP cells
-    //    runif=randunif<float>(0, 1);
-    //    matureSP_Ki67pos_frac = SP_Ki67;
-    //    if(runif < matureSP_Ki67pos_frac)  { // It's Ki67+;
-    //        // now choose a value uniform between  and Ki67+ threshold i.e. exp(-1) and 1.
-    //        // Ki67 on absolute expression scale is in (0,1). So (-infinity, 0) on log scale
-    //        (*new_cell_location).set_ki67_intens_norm(randunif<float>(KPOS_THRESHOLD, 1));
-    //    }
-    //    else // it's Ki67 negative and value doesn't really matter unless you're trying to model the
-    //        // whole Ki67 distribution (and we're not - we just want to model Ki67+ cells well)
-    //    {
-    //        (*new_cell_location).set_ki67_intens_norm(randunif<float>(0, KPOS_THRESHOLD));
-    //    }
-    //    (*new_cell_location).set_cloneID(cloneID);
-    //    (*new_cell_location).set_ndivs(0);
-    //    (*new_cell_location).set_export_time(current_time);
-    //    (*new_cell_location).set_last_division_time(-999999.);
-//
-    //    cout << "I am new cell number " << i << " and clone# " << cloneID << ". My Ki67 intensity is " << (*new_cell_location).get_ki67_intens_norm() << endl;
-    //}
+    cells_in = lrint( THYMIC_EXPORT_RATE_CONSTANT * sp_numbers(current_time, params) * SCALE_OUTPUT * TSTEP);
+
+    for(i=0;i<cells_in;i++){
+        updated_poolsize++;
+        cloneID=rand() % CLONEUNIVERSESIZE; // choose random clonotype
+        if(*spacelistlength==0){
+            // there are no gaps in the array cellstore, so just add onto the end
+            new_cell_location=cellstore + updated_poolsize -1;
+        }
+        else
+        {
+            new_cell_location=spacelist[(*spacelistlength) -1];// space on the top of the stack
+            (*spacelistlength)--; //remove this space from the stack
+        }
+        tolist[j]=new_cell_location;
+        j++;
+        (*(clonerecord+cloneID))++; // record a new cell of this clone
+
+        //make random number to determine whether new cell is Ki67 high or low,
+        // depending on Ki67 expression in SP cells
+        runif= randunif<float>(0, 1);
+        matureSP_Ki67pos_frac = SP_Ki67;
+        if(runif < matureSP_Ki67pos_frac)  { // It's Ki67+;
+            // now choose a value uniform between  and Ki67+ threshold i.e. exp(-1) and 1.
+            // Ki67 on absolute expression scale is in (0,1). So (-infinity, 0) on log scale
+            (*new_cell_location).set_ki67_intens_norm(randunif<float>(KPOS_THRESHOLD, 1));
+        }
+        else // it's Ki67 negative and value doesn't really matter unless you're trying to model the
+            // whole Ki67 distribution (and we're not - we just want to model Ki67+ cells well)
+        {
+            (*new_cell_location).set_ki67_intens_norm(randunif<float>(0, KPOS_THRESHOLD));
+        }
+        (*new_cell_location).set_cloneID(cloneID);
+        (*new_cell_location).set_ndivs(0);
+        (*new_cell_location).set_export_time(current_time);
+        (*new_cell_location).set_last_division_time(-999999.);
+    }
     *poolsize=updated_poolsize;
+}
 
-    return 0;
+// calculate Ki67 fraction
+void ki67_frac(cell *loclist[], int poolsize,  float y[], float params[]){
+    int i, kpos=0;
+    float ki67_intens_norm;
+    cell this_cell;
+    // loop through all cells and look at ki67 expression
+    for(i=0;i<poolsize;i++){
+        this_cell=**(loclist+i);
+        ki67_intens_norm=this_cell.get_ki67_intens_norm();
+        if(ki67_intens_norm>KPOS_THRESHOLD) kpos++;  // log Ki67 starts at log(1) =0;  this decays to -1 after 3.5d
+    }
+    y[0] = float(kpos)/float(poolsize); // fraction of cells that are ki67 pos
 }
 
 int main (int argc, char * const argv[]) {
@@ -332,7 +350,8 @@ int main (int argc, char * const argv[]) {
     int clonerecord[CLONEUNIVERSESIZE]; // Track the number of clones of each type, because we can
 
     float T0, TMAX, sp_numbers_at_T0, THYMIC_EXPORT_RATE_CONSTANT, g0, current_time;
-    float params[4];
+    float params[9];
+    float fraction_results[1]; 
     cell cellstore[STORAGELISTLENGTH],this_cell; // This is where the cells actually are!
     // now define two list of pointers to these cell storage spots, and one to where the empty slots are
     cell *cell_location_list_1[STORAGELISTLENGTH],*cell_location_list_2[STORAGELISTLENGTH], *spacelist[STORAGELISTLENGTH];
@@ -341,14 +360,8 @@ int main (int argc, char * const argv[]) {
     ifstream PAR_FILE;
     ofstream OUTPUT_FILE;
 
-    //  random number libraries
-    std::random_device rd;
-    std::mt19937 generator(rd()); // random seed for mersenne twister
-    //std::mt19937 generator(0); // fixed seed
-
-    //uniform distribution between 0 and 1; call with uniformrandom(generator)
-    std::uniform_real_distribution<> uniformrandom(0, 1);
-
+    // remove any old output files
+    remove(fulloutfile_path.c_str());
 
     PAR_FILE.open(fullparfile_path);
     for(i=0; i<10; i++)  PAR_FILE >> params[i];
@@ -362,8 +375,6 @@ int main (int argc, char * const argv[]) {
     sp_numbers_at_T0 = sp_numbers(T0, params);
     THYMIC_EXPORT_RATE_CONSTANT = ((float) poolsize)*g0/(sp_numbers_at_T0 * SCALE_OUTPUT);
 
-    cout << " I started at " << T0 << " I will run till " << TMAX << endl;
-
     // Set up pre-existing cells at time T0
     // initialise the list of pointers to each cell, and do some initialising of Ki67 and GFP and age at T0.
     for(i=0;i<poolsize;i++){ // loop through all cells
@@ -374,13 +385,42 @@ int main (int argc, char * const argv[]) {
         cell_location_list_1[i]=cellstore+i;  // the i-th entry in cell_location_list_1 is now a pointer to this cell.
         spacelist[i]=nullptr; // space "i" is occupied
         // set up cell properties at T0. It could be more sophisticated than this.
-        (*(cellstore+i)).set_export_time(T0 * uniformrandom(generator));// cells randomly aged between 0 and T0 days, at T0
+        (*(cellstore+i)).set_export_time(T0 * randunif<double>(0, 1));// cells randomly aged between 0 and T0 days, at T0
     }
+
+    // we keep two lists of cell locations; we use one to update the other, and then flip-flop with this variable
+    toggle=0;
+
+    // Write main output file headers and initial conditions
+    OUTPUT_FILE.open(fulloutfile_path);
+    OUTPUT_FILE << "time , time.int, sim_counts , physiol_counts, sp.numbers , new.RTE , Ki67.pos" << endl;
+
+    OUTPUT_FILE << T0 << sep  << (int) floor(T0) << sep << poolsize << sep  << ((float) poolsize)/SCALE_OUTPUT << sep << sp_numbers(T0,params) << sep << "NA" ;
+    //for (i=0; i<11; i++) OUTPUT_FILE << sep << fraction_results[i];
+    OUTPUT_FILE << sep << fraction_results[0];
+    OUTPUT_FILE << endl;
 
     for(current_time=T0+TSTEP;current_time<=TMAX; current_time+=TSTEP) {
         cout << current_time << endl;
-        update(cell_location_list_1, cell_location_list_2, cellstore, clonerecord,
-        &poolsize, spacelist, &spacelistlength, current_time, params, THYMIC_EXPORT_RATE_CONSTANT);
+        if (toggle == 0) {
+            update(cell_location_list_1, cell_location_list_2, cellstore, clonerecord,
+                   &poolsize, spacelist, &spacelistlength, current_time, params, THYMIC_EXPORT_RATE_CONSTANT);
+            ki67_frac(cell_location_list_2, poolsize, fraction_results, params);
+
+        } else {
+            update(cell_location_list_2, cell_location_list_1, cellstore, clonerecord,
+                   &poolsize, spacelist, &spacelistlength, current_time, params, THYMIC_EXPORT_RATE_CONSTANT);
+            ki67_frac(cell_location_list_1, poolsize, fraction_results, params);
+        }
+        toggle = 1 - toggle;
+
+        cells_in = lrint( THYMIC_EXPORT_RATE_CONSTANT * sp_numbers(current_time, params) * SCALE_OUTPUT * TSTEP);
+
+        OUTPUT_FILE << current_time << sep << (int) floor(current_time) << sep << poolsize << sep <<  ((float) poolsize)/SCALE_OUTPUT << sep << sp_numbers(current_time, params)
+                    << sep << cells_in;
+        //for (i = 0; i < 11; i++) OUTPUT_FILE << sep << fraction_results[i];
+        OUTPUT_FILE << sep << fraction_results[0];
+        OUTPUT_FILE << endl;
     }
     cout << "... done!" << endl;
     return 0;

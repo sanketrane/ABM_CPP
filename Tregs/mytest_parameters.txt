@@ -1,12 +1,15 @@
-10.
-0.
-10.
+12.
 1.
+10.
+1
+0.5
+0.0120947136
+0.
 -999999.
-0.420947136
-0.
-0.56085616
-0.
+0.0156085616
+-0.0027623903642
+
+
 
 
 
@@ -25,3 +28,5 @@
 // 7: r_delta (death rate goes with cell age as exp(-r_delta * age))
 // 8: rho_0 (base death rate for cells of age zero)
 // 9: r_rho (div rate goes with cell age as exp(-r_rho * age))
+time , time.int, sim_counts , physiol_counts, sp.numbers 
+0  ,  0  ,  0  ,  0  ,  2.51189e+06  ,  NA
