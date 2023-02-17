@@ -1,6 +1,13 @@
 #!/bin/sh
 
-c++ -std=c++17 mod_trial.cpp -o mod_trial
-./mod_trial > mod_res.out
+while getopts m: flag
+do
+    case "${flag}" in
+        m) modelname=${OPTARG};;
+    esac
+done
+
+c++ -std=c++17 ${modelname}.cpp -o ${modelname}
+./${modelname} > ${modelname}_res.out
 
 echo "---END CODE---"
