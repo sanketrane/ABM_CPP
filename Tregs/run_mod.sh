@@ -7,7 +7,7 @@ do
     esac
 done
 
-c++ -std=c++17 ${modelname}.cpp -o ${modelname}
+c++ -std=c++17 ${modelname}.cpp -o ${modelname} -ltbb
 ./${modelname} > ${modelname}_res.out
 
 echo "---END CODE---"

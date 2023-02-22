@@ -29,6 +29,9 @@
 #include <iostream>
 #include <random>
 #include <string>
+
+#include <vector>
+#include <tbb/parallel_for.h>
 //#include <iomanip>
 #include <fstream>
 //#include <sstream>
@@ -42,7 +45,7 @@ namespace fs = std::filesystem;
 //setting current WD and filepaths for input and output
 auto wdir = fs::current_path();
 fs::path parfile ("mytest_parameters.txt");
-fs::path outfile ("mytest_output.csv");
+fs::path outfile ("myparallel_output.csv");
 fs::path fullparfile_path = wdir / parfile;
 fs::path fulloutfile_path = wdir / outfile;
 
@@ -471,8 +474,13 @@ int main (int argc, char * const argv[]) {
     for (i=0; i<4; i++) OUTPUT_FILE << sep << fraction_results[i];
     OUTPUT_FILE << endl;
 
-    for(current_time=T0+TSTEP;current_time<=TMAX; current_time+=TSTEP) {
-        cout << current_time << endl;
+
+    tbb::parallel_for( tbb::blocked_range<int>(T0+TSTEP,TMAX),
+                       [&](tbb::blocked_range<int> r)
+    {
+        for (int current_time=r.begin(); current_time<r.end(); current_time+=TSTEP)
+        {
+            cout << current_time << endl;
         if (toggle == 0) {
             update(cell_location_list_1, cell_location_list_2, cellstore, clonerecord,
                    &poolsize, spacelist, &spacelistlength, current_time, params, THYMIC_EXPORT_RATE_CONSTANT);
@@ -491,7 +499,8 @@ int main (int argc, char * const argv[]) {
                     << sep << cells_in;
         for (i = 0; i < 4; i++) OUTPUT_FILE << sep << fraction_results[i];
         OUTPUT_FILE << endl;
-    }
+        }
+    });
     cout << "... done!" << endl;
     return 0;
 }

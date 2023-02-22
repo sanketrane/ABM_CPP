@@ -5,11 +5,24 @@ gc()
 library(tidyverse)
 ####################################################################################
 # importing ABM output'
-mod_out <- read.csv('mytest_output.csv')
+mod_out1 <- read.csv('mytest_output.csv')
+mod_out2 <- read.csv('myparallel_output.csv')
 
-ggplot(mod_out) +
+ggplot(mod_out2) +
   geom_line(aes(x=time, y=Donor_fraction))+
   geom_line(aes(x=time, y=Normalized_fd))
+
+
+ggplot(mod_out2) +
+  geom_line(aes(x=time, y=physiol_counts)) + scale_y_log10(limits=c(1e3, 1e6))
+
+
+ggplot(mod_out) +
+  geom_line(aes(x=time, y=Donor_Ki67_pos)) + 
+  geom_line(aes(x=time, y=Host_Ki67_pos)) + 
+  ylim(0,1)
+  
+  
 
 
 
