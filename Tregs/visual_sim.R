@@ -8,19 +8,28 @@ library(tidyverse)
 mod_out1 <- read.csv('mytest_output.csv')
 mod_out2 <- read.csv('myparallel_output.csv')
 
-ggplot(mod_out2) +
-  geom_line(aes(x=time, y=Donor_fraction))+
-  geom_line(aes(x=time, y=Normalized_fd))
+ggplot(mod_out1) +
+  labs(x="Host age (days)", y=NULL, title = "Normalized donor fraction") +
+  ylim(0, 1) +
+  geom_line(aes(x=time, y=Normalized_fd), col='navy', size=1.05)
 
 
-ggplot(mod_out2) +
-  geom_line(aes(x=time, y=physiol_counts)) + scale_y_log10(limits=c(1e3, 1e6))
+ggplot(mod_out1) +
+  geom_line(aes(x=time, y=physiol_counts), col="navy", size=1.05) +
+  labs(x="Host age (days)", y=NULL, title = "Cell counts") +
+  scale_y_log10(limits=c(1e4, 1e7))
 
 
-ggplot(mod_out) +
-  geom_line(aes(x=time, y=Donor_Ki67_pos)) + 
-  geom_line(aes(x=time, y=Host_Ki67_pos)) + 
-  ylim(0,1)
+
+ki_df <- mod_out1 %>%
+  select(time, contains("Ki67")) %>%
+  na_if(0)
+  
+ggplot(ki_df) +
+  geom_line(aes(x=time, y=Donor_Ki67_pos), col=2) + 
+  geom_line(aes(x=time, y=Host_Ki67_pos), col=4) + 
+  labs(x="Host age (days)", y=NULL, title = "Fraction of Ki67 positive") +
+  ylim(0, 1)
   
   
 
