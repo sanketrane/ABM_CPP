@@ -4,12 +4,23 @@
 #include <armadillo>
 
 int main () {
-  arma::vec M(5, arma::fill::randu);
   
-  arma::mat B(5, 5, arma::fill::randu);
+  // set random seed
+  arma::arma_rng::set_seed_random();
+  arma::vec M = {3, 5, 1, 10, 6};
+  
+  //arma::mat B(5, 5, arma::fill::randu);
+  //arma::mat C = B.t() * B;
+
+  arma::vec b = {0.2, 0.5, 1, 1.5, 0.6};
+  arma::mat B = arma::diagmat(b);
   arma::mat C = B.t() * B;
+
+  std::cout << C << std::endl;
   
-  arma::mat X = mvnrnd(M, C, 5);
+  arma::colvec X = mvnrnd(M, C);
+
+  std::cout << X << std::endl;
 
 
   //cout << k << endl;
