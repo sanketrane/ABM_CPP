@@ -1,20 +1,17 @@
 #include <iostream>
-#include "custom_functions.cpp"
-#include <filesystem>
-#include </opt/homebrew/Cellar/libomp/15.0.7/include/omp.h>
-
+//#include "custom_functions.cpp"
+//#include <filesystem>
+#include <armadillo>
 
 int main () {
-  #pragma omp parallel num_threads(3)
-  {
-    int id = omp_get_thread_num();
-    int x=4, y=1;
-    int data=randnorm<double>(x,y);
-    int total = omp_get_num_threads();
-    printf("Greetings from process %d out of %d with Data %d\n", id, total, data);
-  }
-  printf("parallel for ends.\n");
-    
+  arma::vec M(5, arma::fill::randu);
+  
+  arma::mat B(5, 5, arma::fill::randu);
+  arma::mat C = B.t() * B;
+  
+  arma::mat X = mvnrnd(M, C, 5);
+
+
   //cout << k << endl;
 
   //double xd, yd, n;
