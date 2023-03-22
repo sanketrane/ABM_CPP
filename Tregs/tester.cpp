@@ -36,17 +36,22 @@ float sp_numbers(int Time, float params[]){
     return sp_numbers;
 }
 
-int main () {
+int main (int argc, char * const argv[]) {
+  int i;
+  float parms[3];
+  float sp_cal[10];
+  parms[1] = 6.4, parms[2] = 0.0024; parms[3] = 0.3;
 
-  float parms[3] = {6.4, 0.0024, 0.3};
-  
-  cout << "pars " << parms << endl;
-  //std::vector<int> Time_pred(10);
-  //std::iota (std::begin(Time_pred), std::end(Time_pred), 0); // Fill with 0, 1, ..., 99.
-  float sp_cal = sp_numbers(10, parms);
-  float sp_num = 0.3 * pow(10., 6.4) * exp(-1. * 0.0024 * 10); 
-   
-  std::cout << "sp_cal = "<< sp_cal << " sp_num = " << sp_num << std::endl;
+  std::vector<int> Time_pred(10);
+  std::iota (std::begin(Time_pred), std::end(Time_pred), 0); // Fill with 0, 1, ..., 99. = sp_numbers(Time_pred, parms);
+
+  std::cout << "Time_pred " << Time_pred[1] << endl;
+
+  for (i=0; i<10; i++){
+    sp_cal[i] = sp_numbers(Time_pred[i], parms);
+  }
+
+  cout << "Sp_cal " << sp_cal[1] << endl;
+
   return 0;
-
 }
