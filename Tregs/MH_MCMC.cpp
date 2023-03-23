@@ -6,7 +6,7 @@
 // spline1 --
 float sp_numbers(float Time, float params[]){ 
     // these are true numbers - need to scale down for simulation (done elsewhere)
-    float sp_numbers, theta0=params[1], nu=params[2], psi=params[3];
+    float sp_numbers, theta0=params[0], nu=params[1], psi=params[2];
 
     // thymic FoxP3 negative SP4 T cell numbers - spline defs
     sp_numbers = psi * pow(10., theta0) * exp(-1. * nu * Time); 
@@ -33,16 +33,20 @@ void mhsampler (float initial_guess[], )
 }
 
 int main (int argc, char * const argv[]) {
+  
+  int i;
+  float sp_cal[10];
+  float parms[3] = {6.4, 0.0024, 0.3};
+
+  std::vector<int> Time_pred(100); 
+  float startNum=40, step=1;
+  std::generate(Time_pred.begin(), Time_pred.end(), [&startNum, &step]{ return startNum+=step;});
 
 
-    std::vector<float> pars = {6.4, 0.0024, 0.3};
-    std::vector<int> Time_pred(10);
-    std::iota (std::begin(Time_pred), std::end(Time_pred), 0); // Fill with 0, 1, ..., 99.
-
-    float sp_cal = sp_numbers(Time_pred, pars);
-
-    std::cout << "sp_num"<< sp_cal << std::endl;
-
-    return 0;
-
+  for (i=0; i<10; i++){
+    sp_cal[i] = sp_numbers(Time_pred[i], parms);
+    std::cout << "Sp_cal " << sp_cal[i] << '\n';
+  }
+  
+  return 0;
 }

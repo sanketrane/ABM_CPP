@@ -29,7 +29,7 @@ using namespace std;
 // spline1 --
 float sp_numbers(int Time, float params[]){ 
     // these are true numbers - need to scale down for simulation (done elsewhere)
-    float sp_numbers, theta0=params[1], nu=params[2], psi=params[3];
+    float sp_numbers, theta0=params[0], nu=params[1], psi=params[2];
 
     // thymic FoxP3 negative SP4 T cell numbers - spline defs
     sp_numbers = psi * pow(10., theta0) * exp(-1. * nu * Time); 
@@ -38,20 +38,20 @@ float sp_numbers(int Time, float params[]){
 
 int main (int argc, char * const argv[]) {
   int i;
-  float parms[3];
   float sp_cal[10];
-  parms[1] = 6.4, parms[2] = 0.0024; parms[3] = 0.3;
+  float parms[3] = {6.4, 0.0024, 0.3};
 
-  std::vector<int> Time_pred(10);
-  std::iota (std::begin(Time_pred), std::end(Time_pred), 0); // Fill with 0, 1, ..., 99. = sp_numbers(Time_pred, parms);
+  std::vector<int> Time_pred(10); 
+  float startNum=40, step=5;
+  std::generate(Time_pred.begin(), Time_pred.end(), [&startNum, &step]{ return startNum+=step;});
 
-  std::cout << "Time_pred " << Time_pred[1] << endl;
 
   for (i=0; i<10; i++){
+    std::cout << "Params " << parms[i] << '\n';
+    std::cout << "Time_pred " << Time_pred[i] << '\n';
     sp_cal[i] = sp_numbers(Time_pred[i], parms);
+    std::cout << "Sp_cal " << sp_cal[i] << '\n';
   }
-
-  cout << "Sp_cal " << sp_cal[1] << endl;
-
+  
   return 0;
 }
