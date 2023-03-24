@@ -13,40 +13,39 @@ float sp_numbers(float Time, float params[]){
     return sp_numbers;
 }
 
-void mhsampler (float initial_guess[], )
+
+
+
+void mhsampler (arma::vec initial_guess)
 {
   // set random seed
   arma::arma_rng::set_seed_random();
-  arma::vec M = initial_guess;
+  arma::vec mu_current = initial_guess;                     // initial guess for the current mu
 
-  arma::vec b = {0.2, 0.5};
-  arma::mat B = arma::diagmat(b);
-  arma::mat C = B.t() * B;
-
-  std::cout << C << std::endl;
-  
-  arma::vec X = mvnrnd(M, C);
-
-  std::cout << X << std::endl;
-
-  return 0;
+  arma::vec sigma_proposal = {1, 0.5};                      // fixed width (sigmas) for the proposal dstribution
+  arma::mat B = arma::diagmat(sigma_proposal);     
+  arma::mat SIGMA_proposal = B.t() * B;                     // covariance matrix -- diagonal
+  arma::vec X = mvnrnd(mu_current, SIGMA_proposal);         // proposal distribution -- MVN 
+  std::cout << X << '\n';                                   // New sampled mu
 }
 
 int main (int argc, char * const argv[]) {
   
   int i;
-  float sp_cal[10];
-  float parms[3] = {6.4, 0.0024, 0.3};
+  float sp_cal[10], parms[3] = {6.4, 0.0024, 0.3};
+  arma::vec mu_vec = {4, 0.3};
 
   std::vector<int> Time_pred(100); 
   float startNum=40, step=1;
   std::generate(Time_pred.begin(), Time_pred.end(), [&startNum, &step]{ return startNum+=step;});
 
 
-  for (i=0; i<10; i++){
-    sp_cal[i] = sp_numbers(Time_pred[i], parms);
-    std::cout << "Sp_cal " << sp_cal[i] << '\n';
-  }
+  //for (i=0; i<10; i++){
+  //  sp_cal[i] = sp_numbers(Time_pred[i], parms);
+  //  std::cout << "Sp_cal " << sp_cal[i] << '\n';
+  //}
+
+  mhsampler(mu_vec);
   
   return 0;
 }

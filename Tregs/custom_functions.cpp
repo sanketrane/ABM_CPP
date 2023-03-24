@@ -19,3 +19,11 @@ T randnorm(T mean, T sd) {
     std::normal_distribution<T>         distr(mean, sd);
     return distr(generator);
 }
+template <typename T>
+T normal_pdf(T x, T m, T s)
+{
+    static const T inv_sqrt_2pi = 0.3989422804014327;
+    T a = (x - m) / s;
+
+    return inv_sqrt_2pi / s * std::exp(-T(0.5) * a * a);
+}
