@@ -1,0 +1,4 @@
+*.Rhistory
+*.out
+*.csv
+*.json
