@@ -34,6 +34,7 @@
 #include <filesystem>
 #include "custom_functions.cpp"
 
+using namespace std;
 namespace fs = std::filesystem;
 
 //setting current WD and filepaths for input and output
