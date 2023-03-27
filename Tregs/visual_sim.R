@@ -80,8 +80,9 @@ ggplot(mod_out1) +
   geom_point(data = Nfd_data, aes(x = age.at.S1K, y = Nfd, color = ageBMT_bin), size=2) +
   labs(x = "Host age (days)", y = NULL, title = "Normalised Chimerism in naive Tregs") +
   scale_color_discrete(name="Host age at \n BMT (Wks)", labels=legn_labels)+
-  scale_x_continuous(limits = c(1, 350), breaks = c(0,100,200,300, 400, 500))+
+  scale_x_continuous(limits = c(30, 450), breaks = c(0,100,200,300, 400, 500))+
   scale_y_continuous(limits =c(0, 1.02), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1.0)) + 
+  facet_wrap(~ factor(location, levels = c('Thymus', "Periphery")))+
   guides(fill='none')+ myTheme
 
 
@@ -90,8 +91,9 @@ ggplot(mod_out1) +
   geom_point(data = counts_data, aes(x = age.at.S1K, y = total_counts, color = ageBMT_bin), size=2) +
   labs(title=paste('Total counts of naive Tregs'),  y=NULL, x= "Host age (days)") + 
   scale_color_discrete(name="Host age at \n BMT (Wks)", labels=legn_labels)+
-  scale_x_continuous(limits = c(60, 450) , trans="log10", breaks=c(10, 30, 100, 300))+
+  scale_x_continuous(limits = c(40, 450) , trans="log10", breaks=c(10, 30, 100, 300))+
   scale_y_continuous(limits = c(5e3, 5e6), trans="log10", breaks=c(1e4, 1e5, 1e6, 1e7, 1e8), minor_breaks = log10minorbreaks, labels =fancy_scientific) +
+  facet_wrap(~ factor(location, levels = c('Thymus', "Periphery")))+
   guides(fill = 'none') + myTheme 
 
 ki_df <- mod_out1 %>%

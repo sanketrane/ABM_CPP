@@ -188,8 +188,7 @@ float divrate(int poolsize, float current_time, float cell_age, float time_since
     float host_age_at_export = current_time - cell_age;
 
     if (host_age_at_export < 0. ) host_age_at_export = 0.;
-    //return (rho0 * exp(-1.* cell_age * r_rho));
-    return rho0;
+    return (rho0 * exp(-1.* cell_age * r_rho));
 }
 
 void update(cell *fromlist[], cell *tolist[], cell cellstore[], int clonerecord[], int *poolsize, cell *spacelist[],
@@ -470,11 +469,7 @@ int main (int argc, char * const argv[]) {
     OUTPUT_FILE << endl;
 
     for(current_time=T0+TSTEP;current_time<=TMAX; current_time+=TSTEP) {
-        //cout << current_time << endl;
-        int elapsed_time = static_cast<int>(current_time);
-        if (elapsed_time % 5 == 0) {
-            cout << elapsed_time/TMAX << " percent complete" << '\n'; 
-        }  
+        cout << current_time << endl;
         if (toggle == 0) {
             update(cell_location_list_1, cell_location_list_2, cellstore, clonerecord,
                    &poolsize, spacelist, &spacelistlength, current_time, params, THYMIC_EXPORT_RATE_CONSTANT);
@@ -494,9 +489,6 @@ int main (int argc, char * const argv[]) {
         for (i = 0; i < 4; i++) OUTPUT_FILE << sep << fraction_results[i];
         OUTPUT_FILE << endl;
     }
-    
-
-    cout << "... done!" << '\n';
-
+    cout << "... done!" << endl;
     return 0;
 }

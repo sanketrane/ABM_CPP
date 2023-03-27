@@ -1,12 +1,10 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <armadillo>
 #include <filesystem>
 #include <cmath>
 #include <string>
 #include <vector>
-#include <typeinfo>
 
 //#include "custom_functions.cpp"
 
@@ -54,32 +52,14 @@ int main (int argc, char * const argv[]) {
 	else
 		std::cout<<"Could not open the file\n";
 
-
-	std::vector<double> data1;
-	for(int i=0;i<datatofit.size();i++){
-		data1.push_back(stod(datatofit[i][1]));
+	for(int i=0;i<datatofit.size();i++)
+	{
+		for(int j=0;j<datatofit[i].size();j++)
+		{
+			std::cout<<datatofit[i][j]<<" ";
+		}
+		std::cout<<"\n";
 	}
 
-	float X33 = (data1[3]) - (data1[4]);
-	std::cout << "hype: "<< X33 << '\n';
-	//for(int i=0;i<datatofit.size();i++)
-	//{
-	//	std::cout<<datatofit[i][1]<<" ";
-	//	//for(int j=0;j<datatofit[i].size();j++)
-	//	//{
-	//	//	std::cout<<datatofit[i][j]<<" ";
-	//	//}
-	//	std::cout<<"\n";
-	//}
-
-	float sp_cal[10], parms[3] = {6.4, 0.0024, 0.3};
-	arma::vec init_guess = {4, 0.3, 0.2};
-    arma::vec proposal_width = {0.5, 0.1, 0.1};
-    arma::vec prior_mu = {6, 0.5, 0.3};
-    arma::vec prior_sd = {1, 0.1, 0.02};
-
-
- 
-  
   return 0;
 }

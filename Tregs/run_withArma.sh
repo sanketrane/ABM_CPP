@@ -10,4 +10,5 @@ done
 c++ -std=c++17 ${modelname}.cpp -o ${modelname} -larmadillo
 ./${modelname} > ${modelname}_res.out
 
+
 echo "---END CODE---"
