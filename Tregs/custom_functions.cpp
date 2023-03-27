@@ -1,9 +1,13 @@
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <random>
+#include <armadillo>
+#include <filesystem>
+#include <cmath>
+#include <string>
 
-using namespace std;
-
-
+// generatting samples from a uniform distribution with between range_from and range_to
 template<typename T>
 T randunif(T range_from, T range_to) {
     std::random_device                  rand_dev;                       // stock random number libraries
@@ -12,6 +16,7 @@ T randunif(T range_from, T range_to) {
     return distr(generator);
 }
 
+// generatting samples from a univariate normal distribution with mean=mean and sd=sd
 template<typename T>
 T randnorm(T mean, T sd) {
     std::random_device                  rand_dev;                       // stock random number libraries
@@ -19,6 +24,8 @@ T randnorm(T mean, T sd) {
     std::normal_distribution<T>         distr(mean, sd);
     return distr(generator);
 }
+
+// PDF for the univariate normal distribution
 template <typename T>
 T normal_pdf(T x, T m, T s)
 {
@@ -26,4 +33,30 @@ T normal_pdf(T x, T m, T s)
     T a = (x - m) / s;
 
     return inv_sqrt_2pi / s * std::exp(-T(0.5) * a * a);
+}
+
+// PDF for the multivariate normal distribution
+arma::vec dmvnrm_arma(arma::mat const &x,  
+                      arma::rowvec const &mean,  
+                      arma::mat const &sigma, 
+                      bool const logd = false) { 
+    static double const log2pi = std::log(2.0 * M_PI);
+    using arma::uword;
+    uword const n = x.n_rows, 
+             xdim = x.n_cols;
+    arma::vec out(n);
+    arma::mat const rooti = arma::inv(trimatu(arma::chol(sigma)));
+    double const rootisum = arma::sum(log(rooti.diag())), 
+                constants = -(double)xdim/2.0 * log2pi, 
+              other_terms = rootisum + constants;
+    
+    arma::rowvec z;
+    for (uword i = 0; i < n; i++) {
+        z      = (x.row(i) - mean) * rooti;    
+        out(i) = other_terms - 0.5 * arma::dot(z, z);     
+    }  
+      
+    if (logd)
+      return out;
+    return exp(out);
 }
