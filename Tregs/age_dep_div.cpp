@@ -26,23 +26,8 @@
 //    as you go. Then, toggle the lists so you update the old one on the next timestep.
 //    There are prob more efficient ways to do it but this seemed reasonable. My macbook can handle about 100,000 cells.
 
-#include <iostream>
-//#include <iomanip>
-#include <fstream>
-//#include <sstream>
-//#include <cstdlib>
-#include <filesystem>
+
 #include "custom_functions.cpp"
-
-using namespace std;
-namespace fs = std::filesystem;
-
-//setting current WD and filepaths for input and output
-auto wdir = fs::current_path();
-fs::path parfile ("mytest_parameters.txt");
-fs::path outfile ("mytest_output.csv");
-fs::path fullparfile_path = wdir / parfile;
-fs::path fulloutfile_path = wdir / outfile;
 
 // defining fixed variables and parameters
 # define SCALE_OUTPUT 0.005f // Scale N0 and influx by this number to get actual simulated cell numbers
@@ -233,14 +218,14 @@ void update(cell *fromlist[], cell *tolist[], cell cellstore[], int clonerecord[
         //if(runif>(1-p_div) && time_since_last_division>0.2) divide=true;
         if(runif>(1-p_div)) divide=true;
         
-        //cout << "clone# " << cloneID << " div prop: " << 1-p_div << " divided: " << divide <<  " death prop: " << p_loss << " dead: "<< dead << " dice: " << runif <<  endl;
+        //std::cout << "clone# " << cloneID << " div prop: " << 1-p_div << " divided: " << divide <<  " death prop: " << p_loss << " dead: "<< dead << " dice: " << runif <<  '\n';
         
         if(dead){
             divide=false; // just in case of shenanigans with the probabilities above
             updated_poolsize--; // one less cell
             (*(clonerecord+cloneID))--; // and one less of this clone
             if(updated_poolsize<=0) {
-                cout << "Poolsize equals zero" << endl;
+                std::cout << "Poolsize equals zero" << '\n';
                 //exit(1);
             }
             // Add this dead cell's space to the free list
@@ -278,7 +263,7 @@ void update(cell *fromlist[], cell *tolist[], cell cellstore[], int clonerecord[
             (*new_cell_location).set_donor_derived((*this_cell).get_donor_derived()); // same as parent and sibling
             j=j+2; // count 2 cells here
 
-            //cout << "Clone ID: " << (*new_cell_location).get_cloneID() << " Donor status: " << (*new_cell_location).get_donor_derived() << " Ki67 expression: " << (*new_cell_location).get_ki67_intens_norm() << endl;
+            //std::cout << "Clone ID: " << (*new_cell_location).get_cloneID() << " Donor status: " << (*new_cell_location).get_donor_derived() << " Ki67 expression: " << (*new_cell_location).get_ki67_intens_norm() << '\n';
         }
 
         if(!dead && !divide) { //  survives and does nothing
@@ -424,15 +409,23 @@ int main (int argc, char * const argv[]) {
     // now define two list of pointers to these cell storage spots, and one to where the empty slots are
     cell *cell_location_list_1[STORAGELISTLENGTH],*cell_location_list_2[STORAGELISTLENGTH], *spacelist[STORAGELISTLENGTH];
 
+    //setting current WD and filepaths for input and output
+    std::string parfile ("mytest_parameters.txt");
+
+    std::string outname = "output_csv/age_dep_div/outfile_";
+    std::string const& arrayid = argv[1];
+    std::string outfile = outname+arrayid+".csv";
+
+
     // file objects for reading in parameters, and output
-    ifstream PAR_FILE;
-    ofstream OUTPUT_FILE;
+    std::ifstream PAR_FILE;
+    std::ofstream OUTPUT_FILE;
 
     // remove any old output files
-    remove(fulloutfile_path.c_str());
+    remove(outfile.c_str());
 
-    PAR_FILE.open(fullparfile_path);
-    for(i=0; i<11; i++)  PAR_FILE >> params[i];
+    PAR_FILE.open(parfile);
+    for(i=0; i<12; i++)  PAR_FILE >> params[i];
     PAR_FILE.close();
 
     STARTCELLS=(int) params[0];
@@ -461,15 +454,15 @@ int main (int argc, char * const argv[]) {
     toggle=0;
 
     // Write main output file headers and initial conditions
-    OUTPUT_FILE.open(fulloutfile_path);
-    OUTPUT_FILE << "time , time.int, sim_counts , physiol_counts, sp.numbers , new_RTE , Donor_fraction , Normalized_fd , Donor_Ki67_pos , Host_Ki67_pos " << endl;
+    OUTPUT_FILE.open(outfile);
+    OUTPUT_FILE << "time , time.int, sim_counts , physiol_counts, sp.numbers , new_RTE , Donor_fraction , Normalized_fd , Donor_Ki67_pos , Host_Ki67_pos " << '\n';
 
     OUTPUT_FILE << T0 << sep  << (int) floor(T0) << sep << poolsize << sep  << ((float) poolsize)/SCALE_OUTPUT << sep << sp_numbers(T0,params) << sep << 0.0 ;
     for (i=0; i<4; i++) OUTPUT_FILE << sep << fraction_results[i];
-    OUTPUT_FILE << endl;
+    OUTPUT_FILE << '\n';
 
     for(current_time=T0+TSTEP;current_time<=TMAX; current_time+=TSTEP) {
-        cout << current_time << endl;
+        std::cout << current_time << '\n';
         if (toggle == 0) {
             update(cell_location_list_1, cell_location_list_2, cellstore, clonerecord,
                    &poolsize, spacelist, &spacelistlength, current_time, params, THYMIC_EXPORT_RATE_CONSTANT);
@@ -487,8 +480,8 @@ int main (int argc, char * const argv[]) {
         OUTPUT_FILE << current_time << sep << (int) floor(current_time) << sep << poolsize << sep <<  ((float) poolsize)/SCALE_OUTPUT << sep << sp_numbers(current_time, params)
                     << sep << cells_in;
         for (i = 0; i < 4; i++) OUTPUT_FILE << sep << fraction_results[i];
-        OUTPUT_FILE << endl;
+        OUTPUT_FILE << '\n';
     }
-    cout << "... done!" << endl;
+    std::cout << "... done!" << '\n';
     return 0;
 }

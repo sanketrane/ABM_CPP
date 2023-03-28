@@ -26,12 +26,7 @@
 //    as you go. Then, toggle the lists so you update the old one on the next timestep.
 //    There are prob more efficient ways to do it but this seemed reasonable. My macbook can handle about 100,000 cells.
 
-#include <iostream>
-//#include <iomanip>
-#include <fstream>
-//#include <sstream>
-//#include <cstdlib>
-#include <filesystem>
+
 #include "custom_functions.cpp"
 
 using namespace std;
@@ -40,7 +35,7 @@ namespace fs = std::filesystem;
 //setting current WD and filepaths for input and output
 auto wdir = fs::current_path();
 fs::path parfile ("mytest_parameters.txt");
-fs::path outfile ("mytest_output.csv");
+fs::path outfile ("Neutral_model_output.csv");
 fs::path fullparfile_path = wdir / parfile;
 fs::path fulloutfile_path = wdir / outfile;
 
