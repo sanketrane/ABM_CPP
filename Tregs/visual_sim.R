@@ -3,6 +3,10 @@ rm(list = ls())
 gc()    
 
 library(tidyverse)
+
+### Model name
+modelName <- 'incumbent'
+
 ####################################################################################
 myTheme <- theme(text = element_text(size = 12), axis.text = element_text(size = 12), axis.title =  element_text(size = 12, face = "bold"),
                  plot.title = element_text(size=12, face = 'bold',  hjust = 0.5), legend.text = element_text(size=12),
@@ -53,7 +57,7 @@ hostki_data <- read.csv(hostki_file) %>%
   mutate(ageBMT_bin = ifelse(age.at.BMT <= 56, 'agebin1',
                              ifelse(age.at.BMT <= 70, 'agebin2',
                                     ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4'))),
-         subcomp='Host') %>%
+         popln='Host') %>%
   gather(c(Thymus, Periphery), key='location', value = 'prop_ki')
 
 donorki_file <- file.path("data", "donorKi67_naiTreg.csv")
@@ -62,24 +66,24 @@ donorki_data <- read.csv(donorki_file) %>%
   mutate(ageBMT_bin = ifelse(age.at.BMT <= 56, 'agebin1',
                              ifelse(age.at.BMT <= 70, 'agebin2',
                                     ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4'))),
-         subcomp='Donor')%>%
+         popln='Donor')%>%
   gather(c(Thymus, Periphery), key='location', value = 'prop_ki')
 
 ki_data <- rbind(donorki_data, hostki_data)
 
 ####################################################################################
 #import and merge all three CSV files into one data frame
-df <- list.files(path="output_csv/Neutral/finished_runs/", full.names = TRUE) %>% 
+df <- list.files(path= file.path("output_csv", modelName, "finished_runs"), full.names = TRUE) %>% 
   lapply(read_csv) %>% 
   bind_rows %>%
-  rename(host_age = time, 
+  rename(host_age = time.int, 
          thymic_tregs = physiol_counts,
          fp3neg_SP= sp.numbers)
 
 
 counts_df <- df %>%
   select("host_age", "thymic_tregs") %>%
-  gather(-host_age, key='popln', value='counts') %>%
+  gather(-host_age, key='popln', value='counts') %>% na.omit() %>%
   group_by(host_age) %>%
   summarize(lb = quantile(counts, probs = 0.05),
             median = quantile(counts, probs = 0.5),
@@ -87,14 +91,15 @@ counts_df <- df %>%
 
 nfd_df <- df %>%
   select("host_age", "Normalized_fd") %>%
-  gather(-host_age, key='popln', value='Normalized_fd') %>%
+  gather(-host_age, key='popln', value='Normalized_fd') %>% na.omit() %>%
   group_by(host_age) %>%
   summarize(lb = quantile(Normalized_fd, probs = 0.05),
             median = quantile(Normalized_fd, probs = 0.5),
             ub = quantile(Normalized_fd, probs = 0.95))
 
 ki_df <- df %>%
-  select("host_age", "Donor_Ki67_pos", "Host_Ki67_pos") %>%
+  select("host_age", "Donor_Ki67_pos", "Host_Ki67_pos") %>% na.omit() %>%
+  rename(Donor = Donor_Ki67_pos, Host = Host_Ki67_pos) %>%
   gather(-host_age, key='popln', value='counts') %>%
   group_by(host_age, popln) %>%
   summarize(lb = quantile(counts, probs = 0.05),
@@ -134,10 +139,10 @@ fac_labels <- c(`agebin1`= '6-8 weeks', `agebin2`= '8-10 weeks', `agebin3`= '10-
 ggplot(ki_df) +
   geom_line(aes(x=host_age, y=median*100, col=popln)) + 
   geom_ribbon(aes(x = host_age, ymin = lb, ymax = ub), alpha = 0.15)+
-  geom_point(data = ki_data, aes(x = age.at.S1K, y = prop_ki*100, color = subcomp), size=1.5) +
+  geom_point(data = ki_data, aes(x = age.at.S1K, y = prop_ki*100, color = popln), size=1.5) +
   labs(x = "Host age (days)", y = NULL, title = "% Ki67hi in thymic naive Tregs") +
-  scale_x_continuous(limits = c(60, 450), breaks = c(0,100,200,300, 400, 500))+
-  scale_y_continuous(limits =c(0, 50), breaks = c(0, 10, 20, 30, 40, 50))+ 
+  scale_x_continuous(limits = c(60, 450), breaks = c(0,100,200,300, 400, 500)) +
+  scale_y_continuous(limits =c(0, 100), breaks = c(0, 60, 20, 80, 40, 100)) + 
   guides(fill='none') + myTheme + theme(legend.title = element_blank())
 
 

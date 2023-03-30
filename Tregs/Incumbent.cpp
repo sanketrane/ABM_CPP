@@ -26,17 +26,8 @@
 //    There are prob more efficient ways to do it but this seemed reasonable. My macbook can handle about 100,000 cells.
 
 
+
 #include "custom_functions.cpp"
-
-using namespace std;
-namespace fs = std::filesystem;
-
-//setting current WD and filepaths for input and output
-auto wdir = fs::current_path();
-fs::path parfile ("mytest_parameters.txt");
-fs::path outfile ("mytest_output.csv");
-fs::path fullparfile_path = wdir / parfile;
-fs::path fulloutfile_path = wdir / outfile;
 
 // defining fixed variables and parameters
 # define SCALE_OUTPUT 0.005f // Scale N0 and influx by this number to get actual simulated cell numbers
@@ -144,7 +135,7 @@ float sp_numbers(float t, float params[]){
  // spline2 --
 float chi_spline(float t, float params[]) {
    // gives fraction of donor in the thymic FoxP3 negative SP4 T cells 
-   float dpBMT, TBMT=params[10], chi_value, chiEst, qEst;
+   float dpBMT, TBMT=params[9], chi_value, chiEst, qEst;
 
    // spline def for chimerism
    chiEst = 0.816; qEst = 0.063;
@@ -173,13 +164,12 @@ float chi_spline(float t, float params[]) {
 float lossrate(int poolsize, float current_time, bool incumbent, float cell_age, float time_since_last_division, int ndivs, float params[]){
     // parame defs
     float delta0; float r_delta= params[6]; 
-    float N_densitydependence = params[7]; // work with "true" physiological numbers
     float host_age_at_export = current_time - cell_age;
 
     if (host_age_at_export < 0. ) host_age_at_export = 0.;
     //return (delta0 * exp(-1.* cell_age * r_delta));
     if (incumbent) {
-        delta0 = params[11];
+        delta0 = params[10];
     } else {
         delta0 = params[5];
     }
@@ -188,16 +178,15 @@ float lossrate(int poolsize, float current_time, bool incumbent, float cell_age,
 
 float divrate(int poolsize, float current_time, bool incumbent, float cell_age, float time_since_last_division, int ndivs, float params[]){
     // parame defs
-    float rho0; float r_rho= params[9]; 
-    float N_densitydependence = params[7]; // work with "true" physiological numbers
+    float rho0; float r_rho= params[8]; 
     float host_age_at_export = current_time - cell_age;
 
     if (host_age_at_export < 0. ) host_age_at_export = 0.;
     //return (rho0 * exp(-1.* cell_age * r_rho));
     if (incumbent) {
-        rho0 = params[11];
+        rho0 = params[10];
     } else {
-        rho0 = params[8];
+        rho0 = params[7];
     }
     return rho0;
 }
@@ -245,14 +234,12 @@ void update(cell *fromlist[], cell *tolist[], cell cellstore[], int clonerecord[
         //if(runif>(1-p_div) && time_since_last_division>0.2) divide=true;
         if(runif>(1-p_div)) divide=true;
         
-        //cout << "clone# " << cloneID << " div prop: " << 1-p_div << " divided: " << divide <<  " death prop: " << p_loss << " dead: "<< dead << " dice: " << runif <<  endl;
-        
         if(dead){
             divide=false; // just in case of shenanigans with the probabilities above
             updated_poolsize--; // one less cell
             (*(clonerecord+cloneID))--; // and one less of this clone
             if(updated_poolsize<=0) {
-                cout << "Poolsize equals zero" << endl;
+                std::cout << "Poolsize equals zero" << '\n';
                 //exit(1);
             }
             // Add this dead cell's space to the free list
@@ -289,8 +276,6 @@ void update(cell *fromlist[], cell *tolist[], cell cellstore[], int clonerecord[
             (*new_cell_location).set_location_thymus(false); // progeny leaves thymus after division
             (*new_cell_location).set_donor_derived((*this_cell).get_donor_derived()); // same as parent and sibling
             j=j+2; // count 2 cells here
-
-            //cout << "Clone ID: " << (*new_cell_location).get_cloneID() << " Donor status: " << (*new_cell_location).get_donor_derived() << " Ki67 expression: " << (*new_cell_location).get_ki67_intens_norm() << endl;
         }
 
         if(!dead && !divide) { //  survives and does nothing
@@ -382,7 +367,7 @@ void update(cell *fromlist[], cell *tolist[], cell cellstore[], int clonerecord[
 
 // calculate Donor fraction
 void donor_Ki67_frac(cell *loclist[], float current_time, int poolsize,  float y[], float params[]){
-    int i, donorcount=0, donor_kpos=0, host_kpos=0;
+    int i, donorcount=0, donor_kpos=0, host_kpos=0, thymic_donor, peripheral_donor,  thymic_host, peripheral_host,  thymic_incumbent, peripheral_incumbent; 
     float donor_derived, ki67_intens_norm;
     cell this_cell;
     
@@ -395,32 +380,44 @@ void donor_Ki67_frac(cell *loclist[], float current_time, int poolsize,  float y
             // check ki67 frac
             ki67_intens_norm=this_cell.get_ki67_intens_norm();
             if(ki67_intens_norm>KPOS_THRESHOLD) donor_kpos++;  
+            //check if thymic
+            if(this_cell.get_location_thymus()) {
+                thymic_donor++;
+                } else {
+                    peripheral_donor++;
+                    }
         } else {
             // its a host derived cell
             // check ki67 frac
             ki67_intens_norm=this_cell.get_ki67_intens_norm();
             if(ki67_intens_norm>KPOS_THRESHOLD) host_kpos++;  
+            //check if incumbent
+            if(this_cell.get_incumbent()) {
+               //check if thymic
+               if(this_cell.get_location_thymus()) {
+                thymic_incumbent++;
+                } else {
+                    peripheral_incumbent++;
+                    }
+            } else {
+                //check if thymic
+                if(this_cell.get_location_thymus()) {
+                    thymic_host++;
+                    } else {
+                        peripheral_host++;
+                        }
+            }
         }
     }
-    y[0] = float(donorcount)/float(poolsize); // fraction of cells that are donor derived
+    y[0] = float(donorcount); // fraction of cells that are donor derived
     y[1] = float(donorcount)/(float(poolsize) * chi_spline(current_time, params)); if (donorcount <= 0.0) y[1] = 0.0; // donor fraction normalised to chimerism in SP cells
     y[2] = float(donor_kpos)/float(donorcount); if (donorcount <= 0.0) y[2] = 0.0; // fraction of donor cells that are Ki67+
     y[3] = float(host_kpos)/(float(poolsize) - float(donorcount)); // fraction of host cells that are Ki67+
+    y[4] = float(incnum);   // counts of incumbent host cells
+    y[5] = float(incnum);   // counts of thymic cells
+    y[6] = float(incnum);   // counts of peripheral host cells
 }
 
-// calculate Ki67 fraction
-void ki67_frac(cell *loclist[], int poolsize,  float y[], float params[]){
-    int i, kpos=0;
-    float ki67_intens_norm;
-    cell this_cell;
-    // loop through all cells and look at ki67 expression
-    for(i=0;i<poolsize;i++){
-        this_cell=**(loclist+i);
-        ki67_intens_norm=this_cell.get_ki67_intens_norm();
-        if(ki67_intens_norm>KPOS_THRESHOLD) kpos++;  // log Ki67 starts at log(1) =0;  this decays to -1 after 3.5d
-    }
-    y[0] = float(kpos)/float(poolsize); // fraction of cells that are ki67 pos
-}
 
 int main (int argc, char * const argv[]) {
 
@@ -429,34 +426,47 @@ int main (int argc, char * const argv[]) {
     int toggle, poolsize,spacelistlength=0,spec, cells_in;
     int clonerecord[CLONEUNIVERSESIZE]; // Track the number of clones of each type, because we can
 
-    float T0, TMAX, TBMT, sp_numbers_at_T0, THYMIC_EXPORT_RATE_CONSTANT, g0, current_time;
-    float params[11];
+    float T0, TMAX, TBMT, Inc0, sp_numbers_at_T0, THYMIC_EXPORT_RATE_CONSTANT, g0, current_time;
+    float params[12];
     float fraction_results[4]; 
     cell cellstore[STORAGELISTLENGTH],this_cell; // This is where the cells actually are!
     // now define two list of pointers to these cell storage spots, and one to where the empty slots are
     cell *cell_location_list_1[STORAGELISTLENGTH],*cell_location_list_2[STORAGELISTLENGTH], *spacelist[STORAGELISTLENGTH];
 
+    //setting current WD and filepaths for input and output
+    std::string parfile ("mytest_parameters.txt");
+
+    std::string outname = "output_csv/incumbent/outfile_";
+    std::string const& arrayid = argv[1];
+    std::string outfile = outname+arrayid+".csv";
+
+
     // file objects for reading in parameters, and output
-    ifstream PAR_FILE;
-    ofstream OUTPUT_FILE;
+    std::ifstream PAR_FILE;
+    std::ofstream OUTPUT_FILE;
 
     // remove any old output files
-    remove(fulloutfile_path.c_str());
+    remove(outfile.c_str());
 
-    PAR_FILE.open(fullparfile_path);
-    for(i=0; i<12; i++)  PAR_FILE >> params[i];
+    PAR_FILE.open(parfile);
+    for(i=0; i<12; i++) {
+        PAR_FILE >> params[i];
+    }
     PAR_FILE.close();
 
     STARTCELLS=(int) params[0];
-    poolsize=STARTCELLS;
+    poolsize=exp(randnorm(log(STARTCELLS, 1))), ;
     T0=params[1];
     TMAX=params[2];
     g0=params[3];
-    TBMT=params[10];
+    TBMT=params[9];
+    Inc0=params[11];
     sp_numbers_at_T0 = sp_numbers(T0, params);
     THYMIC_EXPORT_RATE_CONSTANT = ((float) poolsize)*g0/(sp_numbers_at_T0 * SCALE_OUTPUT);
 
-    // Set up pre-existing cells at time T0
+    int Incumbent_t0 = 0;
+
+        // Set up pre-existing cells at time T0
     // initialise the list of pointers to each cell, and do some initialising of Ki67 and GFP and age at T0.
     for(i=0;i<poolsize;i++){ // loop through all cells
         spec=rand() % CLONEUNIVERSESIZE; // vaguely random number between 0 and CLONEUNIVERSESIZE-1
@@ -466,22 +476,28 @@ int main (int argc, char * const argv[]) {
         cell_location_list_1[i]=cellstore+i;  // the i-th entry in cell_location_list_1 is now a pointer to this cell.
         spacelist[i]=nullptr; // space "i" is occupied
         // set up cell properties at T0. It could be more sophisticated than this.
-        (*(cellstore+i)).set_export_time(T0 * randunif<double>(0, 1));// cells randomly aged between 0 and T0 days, at T0
+        (*(cellstore+i)).set_export_time(T0 * randunif<float>(0, 1));// cells randomly aged between 0 and T0 days, at T0
+        // set whether the cell is incumbent or no
+        float inc_decision = randunif<float>(0, 1);
+        if(inc_decision <= Inc0){
+            (*(cellstore+i)).set_incumbent(true);// approximatelyInc0% cells are incumbent
+            Incumbent_t0++;
+        }
     }
 
     // we keep two lists of cell locations; we use one to update the other, and then flip-flop with this variable
     toggle=0;
 
     // Write main output file headers and initial conditions
-    OUTPUT_FILE.open(fulloutfile_path);
-    OUTPUT_FILE << "time , time.int, sim_counts , physiol_counts, sp.numbers , new_RTE , Donor_fraction , Normalized_fd , Donor_Ki67_pos , Host_Ki67_pos " << endl;
+    OUTPUT_FILE.open(outfile);
+    OUTPUT_FILE << "time , time.int, sim_counts , physiol_counts, sp.numbers , new_RTE , Donor_fraction , Normalized_fd , Donor_Ki67_pos , Host_Ki67_pos , Incumbent_counts , Th" << '\n';
 
     OUTPUT_FILE << T0 << sep  << (int) floor(T0) << sep << poolsize << sep  << ((float) poolsize)/SCALE_OUTPUT << sep << sp_numbers(T0,params) << sep << 0.0 ;
     for (i=0; i<4; i++) OUTPUT_FILE << sep << fraction_results[i];
-    OUTPUT_FILE << endl;
+    OUTPUT_FILE << '\n';
 
     for(current_time=T0+TSTEP;current_time<=TMAX; current_time+=TSTEP) {
-        cout << current_time << endl;
+        //std::cout << current_time << '\n';
         if (toggle == 0) {
             update(cell_location_list_1, cell_location_list_2, cellstore, clonerecord,
                    &poolsize, spacelist, &spacelistlength, current_time, params, THYMIC_EXPORT_RATE_CONSTANT);
@@ -499,8 +515,8 @@ int main (int argc, char * const argv[]) {
         OUTPUT_FILE << current_time << sep << (int) floor(current_time) << sep << poolsize << sep <<  ((float) poolsize)/SCALE_OUTPUT << sep << sp_numbers(current_time, params)
                     << sep << cells_in;
         for (i = 0; i < 4; i++) OUTPUT_FILE << sep << fraction_results[i];
-        OUTPUT_FILE << endl;
+        OUTPUT_FILE << '\n';
     }
-    cout << "... done!" << endl;
+    std::cout << "... done!" << '\n';
     return 0;
 }

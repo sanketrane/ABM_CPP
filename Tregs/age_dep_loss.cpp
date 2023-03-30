@@ -1,4 +1,3 @@
-
 //
 //  main.cpp
 //  NonSpatial-ABM
@@ -163,8 +162,7 @@ float lossrate(int poolsize, float current_time, float cell_age, float time_sinc
     float host_age_at_export = current_time - cell_age;
     
     if (host_age_at_export < 0. ) host_age_at_export = 0.;
-    //return (delta0 * exp(-1.* cell_age * r_delta));
-    return delta0;
+    return (delta0 * exp(-1.* cell_age * r_delta));
 }
 
 float divrate(int poolsize, float current_time, float cell_age, float time_since_last_division, int ndivs, float params[]){
@@ -414,7 +412,7 @@ int main (int argc, char * const argv[]) {
     //setting current WD and filepaths for input and output
     std::string parfile ("mytest_parameters.txt");
 
-    std::string outname = "output_csv/age_dep_div/outfile_";
+    std::string outname = "output_csv/age_dep_loss/outfile_";
     std::string const& arrayid = argv[1];
     std::string outfile = outname+arrayid+".csv";
 
@@ -456,8 +454,6 @@ int main (int argc, char * const argv[]) {
     toggle=0;
 
     // Write main output file headers and initial conditions
-    
-    
     OUTPUT_FILE.open(outfile);
     OUTPUT_FILE << "time , time.int, sim_counts , physiol_counts, sp.numbers , new_RTE , Donor_fraction , Normalized_fd , Donor_Ki67_pos , Host_Ki67_pos " << '\n';
 
@@ -467,10 +463,6 @@ int main (int argc, char * const argv[]) {
 
     for(current_time=T0+TSTEP;current_time<=TMAX; current_time+=TSTEP) {
         //std::cout << current_time << '\n';
-        if(fmod(current_time, 25) == 0.0){
-            std::cout << current_time << '\n';
-        }
-
         if (toggle == 0) {
             update(cell_location_list_1, cell_location_list_2, cellstore, clonerecord,
                    &poolsize, spacelist, &spacelistlength, current_time, params, THYMIC_EXPORT_RATE_CONSTANT);
@@ -490,9 +482,6 @@ int main (int argc, char * const argv[]) {
         for (i = 0; i < 4; i++) OUTPUT_FILE << sep << fraction_results[i];
         OUTPUT_FILE << '\n';
     }
-    
-
     std::cout << "... done!" << '\n';
-
     return 0;
 }
