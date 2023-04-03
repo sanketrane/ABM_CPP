@@ -447,7 +447,7 @@ int main (int argc, char * const argv[]) {
         cell_location_list_1[i]=cellstore+i;  // the i-th entry in cell_location_list_1 is now a pointer to this cell.
         spacelist[i]=nullptr; // space "i" is occupied
         // set up cell properties at T0. It could be more sophisticated than this.
-        (*(cellstore+i)).set_export_time(T0 * randunif<double>(0, 1));// cells randomly aged between 0 and T0 days, at T0
+        (*(cellstore+i)).set_export_time(T0 * randnorm<double>(20, 5));// cells randomly aged between 0 and T0 days, at T0
     }
 
     // we keep two lists of cell locations; we use one to update the other, and then flip-flop with this variable

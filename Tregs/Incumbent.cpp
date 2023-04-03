@@ -367,7 +367,7 @@ void update(cell *fromlist[], cell *tolist[], cell cellstore[], int clonerecord[
 
 // calculate Donor fraction
 void donor_Ki67_frac(cell *loclist[], float current_time, int poolsize,  float y[], float params[]){
-    int i, donorcount=0, donor_kpos=0, host_kpos=0, thymic_donor, peripheral_donor,  thymic_host, peripheral_host,  thymic_incumbent, peripheral_incumbent; 
+    int i, donor_kpos=0, host_kpos=0, thymic_donor, peripheral_donor,  thymic_host, peripheral_host,  thymic_incumbent, peripheral_incumbent; 
     float donor_derived, ki67_intens_norm;
     cell this_cell;
     
@@ -376,7 +376,6 @@ void donor_Ki67_frac(cell *loclist[], float current_time, int poolsize,  float y
         this_cell=**(loclist+i);
         donor_derived=this_cell.get_donor_derived();
         if(donor_derived)  {// bool variable
-            donorcount++;  
             // check ki67 frac
             ki67_intens_norm=this_cell.get_ki67_intens_norm();
             if(ki67_intens_norm>KPOS_THRESHOLD) donor_kpos++;  
@@ -409,7 +408,7 @@ void donor_Ki67_frac(cell *loclist[], float current_time, int poolsize,  float y
             }
         }
     }
-    y[0] = float(donorcount); // fraction of cells that are donor derived
+    y[0] = float(thymic_donor)/(float(thymic_donor)+ float(thymic_host) + float(thymic_incumbent)); // fraction of thymic cells that are donor derived
     y[1] = float(donorcount)/(float(poolsize) * chi_spline(current_time, params)); if (donorcount <= 0.0) y[1] = 0.0; // donor fraction normalised to chimerism in SP cells
     y[2] = float(donor_kpos)/float(donorcount); if (donorcount <= 0.0) y[2] = 0.0; // fraction of donor cells that are Ki67+
     y[3] = float(host_kpos)/(float(poolsize) - float(donorcount)); // fraction of host cells that are Ki67+
