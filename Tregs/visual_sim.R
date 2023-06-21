@@ -5,7 +5,7 @@ gc()
 library(tidyverse)
 
 ### Model name
-modelName <- 'incumbent'
+modelName <- 'Neutral'
 
 ####################################################################################
 myTheme <- theme(text = element_text(size = 12), axis.text = element_text(size = 12), axis.title =  element_text(size = 12, face = "bold"),
@@ -80,8 +80,13 @@ df <- list.files(path= file.path("output_csv", modelName, "finished_runs"), full
          thymic_tregs = physiol_counts,
          fp3neg_SP= sp.numbers)
 
+df_single <- read_csv(file.path("output_csv", modelName, "outfile_m1.csv")) %>%
+  rename(host_age = time.int, 
+         thymic_tregs = physiol_counts,
+         fp3neg_SP= sp.numbers)
 
-counts_df <- df %>%
+
+counts_df <- df_single %>%
   select("host_age", "thymic_tregs") %>%
   gather(-host_age, key='popln', value='counts') %>% na.omit() %>%
   group_by(host_age) %>%
@@ -89,7 +94,7 @@ counts_df <- df %>%
             median = quantile(counts, probs = 0.5),
             ub = quantile(counts, probs = 0.95))
 
-nfd_df <- df %>%
+nfd_df <- df_single %>%
   select("host_age", "Normalized_fd") %>%
   gather(-host_age, key='popln', value='Normalized_fd') %>% na.omit() %>%
   group_by(host_age) %>%
@@ -97,7 +102,7 @@ nfd_df <- df %>%
             median = quantile(Normalized_fd, probs = 0.5),
             ub = quantile(Normalized_fd, probs = 0.95))
 
-ki_df <- df %>%
+ki_df <- df_single %>%
   select("host_age", "Donor_Ki67_pos", "Host_Ki67_pos") %>% na.omit() %>%
   rename(Donor = Donor_Ki67_pos, Host = Host_Ki67_pos) %>%
   gather(-host_age, key='popln', value='counts') %>%
@@ -111,7 +116,7 @@ ki_df <- df %>%
 legn_labels <- c('6-8', '8-10', '10-12', '12-25')
 
 ggplot(nfd_df) +
-  geom_line(aes(x=host_age, y=median), size=1.05)+
+  geom_line(aes(x=host_age, y=median))+
   geom_ribbon(data = counts_df, aes(x = host_age, ymin = lb, ymax = ub), alpha = 0.15)+
   geom_point(data = filter(Nfd_data, location=="Thymus"), aes(x = age.at.S1K, y = Nfd, color = ageBMT_bin), size=2) +
   labs(x = "Host age (days)", y = NULL, title = "Normalised Chimerism in naive Tregs") +
@@ -123,7 +128,7 @@ ggplot(nfd_df) +
 
 
 ggplot(counts_df) +
-  geom_line(aes(x=host_age, y=median), size=1.05) +
+  geom_line(aes(x=host_age, y=median)) +
   geom_ribbon(data = counts_df, aes(x = host_age, ymin = lb, ymax = ub), alpha = 0.15)+
   geom_point(data = filter(counts_data, location=="Thymus"), aes(x = age.at.S1K, y = total_counts, color = ageBMT_bin), size=2) +
   labs(title=paste('Total counts of naive Tregs'),  y=NULL, x= "Host age (days)") + 

@@ -7,6 +7,20 @@
 #include <cmath>
 #include <string>
 
+// printing elements of a vector
+template <typename S>
+void print_vector(const std::vector<S>& vector,
+                 std::string sep = " ")
+{
+    // Iterating vector by using index
+    for (int i = 0; i < vector.size(); i++) {
+        // Printing the element at
+        // index 'i' of vector
+        std::cout << vector[i] << sep;
+    }
+    std::cout << '\n';
+}
+
 // generatting samples from a uniform distribution with between range_from and range_to
 template<typename T>
 T randunif(T range_from, T range_to) {

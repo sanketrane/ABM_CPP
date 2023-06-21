@@ -1,6 +1,5 @@
 
 //
-//  main.cpp
 //  NonSpatial-ABM
 //
 //  Written by Sanket Rane.
@@ -33,7 +32,6 @@
 // defining fixed variables and parameters
 # define SCALE_OUTPUT 0.005f // Scale N0 and influx by this number to get actual simulated cell numbers
 # define CLONEUNIVERSESIZE 100 // number of possible clonotypes/TCR sequences
-//# define TSTEP 0.04f // time step. needs to be small, bcs event probabilities are estimated as (process rate)*TSTEP
 # define TSTEP 0.04f // time step. needs to be small, bcs event probabilities are estimated as (process rate)*TSTEP
 # define STORAGELISTLENGTH 100000 // max number of cells
 # define LOG_KPOS_THRESHOLD -1.f // Define threshold of Ki67 positivity. Set to exp(-1) consistent with Sanket's ASM
@@ -46,9 +44,7 @@
 
 # define sep "  ,  " // column separator for output files (e.g. comma or tab)
 
-// CD4 neutral model;  DIV  0.00456f  LOSS 0.07f, N0 = 907,000 N0, THYMIC_EXPORT_RATE 0.54
-// CD8 rhovar ASM; N0 = 70983.6881, delta = 0.04533878, rho=0.061905344 * exp(0.164375558 a)
-// ---------------------------------------------------------------------
+
 // Cell object definition
 class cell
 {
@@ -101,17 +97,20 @@ cell::cell(int p1, float p2, bool p3, bool p4, int p5, float p6, float p7){ //ge
     export_time=p7;
 }
 
+
 // parameters (all floats)
-// 0: 4 or 8 (CD4 or CD8)
-// 1: N0 (to be scaled by 0.005 to get actual cell numbers)
-// 2: T0 (start time for simulations)
-// 3: TMAX
-// 4: g0  pop density at age zero at time T0. # thymic export rate at time t=1 = C* SP(1)  =  N(t=1)g(0)
-// 5: N_densitydependence (scale for density dep div or loss - in "true" physiological numbers
-// 6: delta0 (base death rate for cells of age zero)
-// 7: r_delta (death rate goes with cell age as exp(-r_delta * age))
+// 0: N0 (to be scaled by 0.005 to get actual cell numbers)
+// 1: T0 (start time for simulations)
+// 2: TMAX
+// 3: g0  pop density at age zero at time T0. # thymic export rate at time t=1 = C* SP(1)  =  N(t=1)g(0)
+// 4: psi -- perc capita rate of influx
+// 5: delta0 (base death rate for cells of age zero)
+// 6: r_delta (death rate goes with cell age as exp(-r_delta * age))
+// 7: N_densitydependence (scale for density dep div or loss - in "true" physiological numbers
 // 8: rho_0 (base death rate for cells of age zero)
 // 9: r_rho (div rate goes with cell age as exp(-r_rho * age))
+// 10: TBMT -- host age at bmt
+// 11: rate of loss/division of an incumbent cell
 
  // spline1 --
 float sp_numbers(float t, float params[]){ 
@@ -220,8 +219,6 @@ void update(cell *fromlist[], cell *tolist[], cell cellstore[], int clonerecord[
         //if(runif>(1-p_div) && time_since_last_division>0.2) divide=true;
         if(runif>(1-p_div)) divide=true;
         
-        //std::cout << "clone# " << cloneID << " div prop: " << 1-p_div << " divided: " << divide <<  " death prop: " << p_loss << " dead: "<< dead << " dice: " << runif <<  '\n';
-        
         if(dead){
             divide=false; // just in case of shenanigans with the probabilities above
             updated_poolsize--; // one less cell
@@ -264,9 +261,7 @@ void update(cell *fromlist[], cell *tolist[], cell cellstore[], int clonerecord[
             (*new_cell_location).set_location_thymus(false); // progeny leaves thymus after division
             (*new_cell_location).set_donor_derived((*this_cell).get_donor_derived()); // same as parent and sibling
             j=j+2; // count 2 cells here
-
-            //std::cout << "Clone ID: " << (*new_cell_location).get_cloneID() << " Donor status: " << (*new_cell_location).get_donor_derived() << " Ki67 expression: " << (*new_cell_location).get_ki67_intens_norm() << '\n';
-        }
+            }
 
         if(!dead && !divide) { //  survives and does nothing
             // if it's Ki67_stoch positive, does it become Ki67_stoch neg?
@@ -414,7 +409,7 @@ int main (int argc, char * const argv[]) {
     //setting current WD and filepaths for input and output
     std::string parfile ("mytest_parameters.txt");
 
-    std::string outname = "output_csv/age_dep_div/outfile_";
+    std::string outname = "output_csv/Neutral/outfile_";
     std::string const& arrayid = argv[1];
     std::string outfile = outname+arrayid+".csv";
 

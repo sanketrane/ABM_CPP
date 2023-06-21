@@ -7,7 +7,7 @@ do
     esac
 done
 
-c++ -std=c++17 ${modelname}.cpp -o ${modelname} -larmadillo
+c++ -std=c++17 Models/${modelname}.cpp -o ${modelname} -larmadillo
 ./${modelname} m1 > ${modelname}_res.out
 
 
