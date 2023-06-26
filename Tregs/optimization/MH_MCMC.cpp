@@ -1,87 +1,133 @@
 #include <iostream>
 #include "../Models/custom_functions.cpp"
 
-// spline1 --
-float sp_numbers(int Time, float params[]){ 
-
+// model --
+float sp_numbers(int Time, arma::vec params){ 
     // these are true numbers - need to scale down for simulation (done elsewhere)
-    float tot_numbers, theta0=params[0], nu=params[1], b0=params[2];
+    float tot_numbers, theta0=params[0], nu=exp(params[1]), b0=params[2];
     // thymic FoxP3 negative SP4 T cell numbers - spline defs
     tot_numbers = pow(10., b0) + pow(10., theta0) * exp(-1. * nu * Time);
+    
     return tot_numbers;
 }
 
-float llfunction(
-  std::vector<int>x, float params[], float sd, std::function<float(float, float[])> func,
-  float y_obs[]){
+// function to feed in LL function
+std::vector<float> model_output (arma::vec params){
+  std::vector<int> Time_pred(10); std::vector<float> sp_cal;
+  float startNum=40, step=1;
+  std::generate(Time_pred.begin(), Time_pred.end(), [&startNum, &step]{ return startNum+=step;});
 
-    int i, size_dat = x.size();
-    float y_pred[size_dat], ll_ind[size_dat], ll_est;
+  for (int i=0; i<10; i++){
+    sp_cal.push_back(log(sp_numbers(Time_pred[i], params)));
+  }
+  
+  return sp_cal;
+}
+
+// Log likelihood (LL) --
+float llfunction(arma::vec params, std::vector<float> y_obs){
+  // calculate LL of model predictions conditional on observed data
+    int i, size_dat = y_obs.size();
+    float  sd = params.at(3), ll_ind[size_dat], ll_est;
+    std::vector<float> y_pred = model_output(params);    // model simulation
 
     for (i=0; i<size_dat; i++){
-      y_pred[i] = log(func(x[i], params));
-      std::cout << "y_pred " << y_pred[i] << " y_obs " << y_obs[i] << '\n';
       ll_ind[i] = normal_pdf(y_pred[i], y_obs[i], sd);
-      std::cout << "ll_ind " << log(ll_ind[i]) << '\n';
       ll_est += log(ll_ind[i]);
     }
     return ll_est;
 }
 
 void mhsampler(
-  arma::vec proposal_width, arma::vec initial_guess,                     // latent variables 
-  arma::vec prior_mu, arma::vec prior_sd                                 // priors defined for each model
+  arma::vec proposal_width, arma::vec initial_guess,                     // Hyper parameters
+  arma::vec prior_mu, arma::vec prior_sd,                                // priors defined for each model
+  std::vector<float> y_obs,                                               // data as a vector
+  int Num_samples
   )             
 {             
-  int k = prior_mu.size();             
-  arma::arma_rng::set_seed_random();                                     // set random seed
-  arma::vec mu_current = initial_guess;                                  // initial guess is used to set the current mu for sampler initialization
+  int k = prior_mu.size(),  s=0;          
+  arma::arma_rng::set_seed_random();                                         // set random seed
+  arma::vec current_mu = initial_guess;                                      // initial guess is used to set the current mu for sampler initialization
                
-  arma::mat sigma_diag = arma::diagmat(proposal_width);                  // define a diagonal matrix for sigma of mvn proposal distribution
-  arma::mat Sigma_proposal = sigma_diag.t() * sigma_diag;                // covariance matrix -- diagonal
+  arma::mat proposal_diag = arma::diagmat(proposal_width);                     // define a diagonal matrix for sigma of mvn proposal distribution
+  arma::mat Sigma_proposal = proposal_diag.t() * proposal_diag;                // covariance matrix -- diagona
   
-  // propose a new mu using proposal distribution
-  arma::vec mu_proposal = mvnrnd(mu_current, Sigma_proposal);            // proposal distribution -- MVN 
-  std::cout << "mu_proposal: " << mu_proposal << '\n';                   // New sampled mu
+  arma::mat Posterior(1, k);
+  Posterior = arma::conv_to<arma::rowvec>::from(current_mu);
+  std::cout << " POST " << Posterior << '\n';
 
-  // definition of the prior distribution
-  arma::rowvec Mu_prior = arma::conv_to<arma::rowvec>::from(prior_mu);   // conversion to a row vector to feed into dmvnorm function
-  arma::mat sd_diag = arma::diagmat(prior_sd);     
-  arma::mat SD_prior = sd_diag.t() * sd_diag;                                            // covariance matrix -- diagonal
-  
-  // defining prior probabilities of mu_current and mu_proposed
-  arma::rowvec Mu_C(1, k), Mu_P(1, k), Sig_C(1, k), Sig_P(1, k);         // defining vectors with k elements for old and new mu
-  Mu_C = arma::conv_to<arma::rowvec>::from(mu_current);                  // conversion to a row vector to feed into dmvnorm function
-  Mu_P = arma::conv_to<arma::rowvec>::from(mu_proposal);                 
-  arma::vec prior_current = dmvnrm_arma(Mu_C, Mu_prior, SD_prior, true);           // probability of mu_current based of prior distribution
-  arma::vec prior_proposal = dmvnrm_arma(Mu_P, Mu_prior, SD_prior, true);          // probability of mu_proposed based of prior distribution
+   while (s < Num_samples)
+   {
+      // propose a new mu using proposal distribution
+      arma::vec new_sampled_mu = mvnrnd(current_mu, Sigma_proposal);               // proposal distribution -- MVN 
+      //std::cout << "new_sampled_mu: " << new_sampled_mu << '\n';                   // New sampled mu
+    
+      // definition of the prior distribution
+      arma::rowvec Mu_prior = arma::conv_to<arma::rowvec>::from(prior_mu);          // conversion to a row vector to feed into dmvnorm function
+      arma::mat sd_diag = arma::diagmat(prior_sd);     
+      arma::mat SD_prior = sd_diag.t() * sd_diag;                                   // covariance matrix -- diagonal
+      
+      // defining prior probabilities of mu_current and mu_proposed
+      arma::rowvec Current_Mu(1, k), New_Mu(1, k), Sig_C(1, k), Sig_P(1, k);         // defining vectors with k elements for old and new mu
+      Current_Mu = arma::conv_to<arma::rowvec>::from(current_mu);                    // conversion to a row vector to feed into dmvnorm function
+      New_Mu = arma::conv_to<arma::rowvec>::from(new_sampled_mu);                 
+      arma::vec PriorProb_current = dmvnrm_arma(Current_Mu, Mu_prior, SD_prior, true);  // probability of mu_current based of prior distribution
+      arma::vec PriorProb_new = dmvnrm_arma(New_Mu, Mu_prior, SD_prior, true);          // probability of mu_proposed based of prior distribution
+    
+      float  LL_current = llfunction(current_mu, y_obs);                       // LL of current mu conditional on y_obs
+      float  LL_new = llfunction(new_sampled_mu, y_obs);                       // LL of new sampled mu conditional on y_obs
+    
+      // std::cout << "prior_current: " << PriorProb_current << "prior_proposal: " << PriorProb_new << '\n';  
+      // std::cout << "ll_current: " << LL_current << " ll_proposal: " << LL_new << '\n';  
+    
+      float PostProb_current = LL_current + PriorProb_current[0];
+      float PostProb_new = LL_new + PriorProb_new[0];
+    
+      // std::cout << "PostProb_current: " << PostProb_current << '\n';                   // New sampled mu
+      // std::cout << "PostProb_new: " << PostProb_new << '\n';                   // New sampled mu
+    
+    
+      float Acceptance = PostProb_new - PostProb_current;
+      float Random_threshold = log(randunif<float>(0, 1));
+      //std::cout << "Acceptance: " << Acceptance << '\n';                   // New sampled mu
+      //std::cout << "Random_threshold: " << Random_threshold << '\n';                   // New sampled mu
+    
+    
+      //std::cout << "old_mu: " << current_mu << '\n';                   // New sampled mu
+      if (Random_threshold < Acceptance)
+      {
+        //update mu
+        current_mu = new_sampled_mu;
+        s++; 
+        Posterior.insert_rows(s, arma::conv_to<arma::rowvec>::from(current_mu));
+        std::cout << " Posterior has " << Posterior.n_rows << " rows." << '\n';
 
-  std::cout << "p_current: " << prior_current << "p_proposal: " << prior_proposal << '\n';  
+      }                  // New accepted mu
+    }
+    std::cout << Posterior << '\n'; 
 }
 
 
 int main (int argc, char * const argv[]) {
   
-  int i;
-  float parms[3] = {6.5, 0.1, 5},  sig_sp = 1.5, sp_cal[10], sp_dat[10];
-
-  arma::vec init_guess = {4, 0.03, 5}, proposal_width = {0.5, 0.5, 0.5}, prior_mu = {5, 0.5, 5}, prior_sd = {1, 0.1, 1};
+  arma::vec init_guess = {5.0, -0.2, 5.0, 1.5}, proposal_width = {0.5, 0.5, 0.5, 0.5}, 
+  prior_mu = {5, -0.1, 5, 1.2}, prior_sd = {1, 0.5, 1, 0.5},
+  parms = {6.5, -0.08, 4.8, 1.5};
+  
+  float sig_sp = parms[3], sp_noise[10];
 
   std::vector<int> Time_pred(10); 
   float startNum=40, step=1;
   std::generate(Time_pred.begin(), Time_pred.end(), [&startNum, &step]{ return startNum+=step;});
 
-  //print_vector(Time_pred);
-  //sp_dat = randnorm<float>(sp_cal, sig_sp);
-  
-  for (i=0; i<10; i++){
-    sp_cal[i] = sp_numbers(Time_pred[i], parms);
-    sp_dat[i] = log(randnorm(sp_cal[i], sig_sp));
-    std::cout << " sp_dat " << sp_dat[i] << '\n';
+  // generating data
+  std::vector<float> sp_cal = model_output(parms);
+  for (int i=0; i<10; i++){
+    sp_noise[i] = randnorm<float>(sp_cal[i], sig_sp);
   }
+  std::vector<float> sp_dat(std::begin(sp_noise), std::end(sp_noise));
 
-  float ll_val = llfunction(Time_pred, parms, sig_sp, &sp_numbers, sp_dat);
-  std::cout << "myval " << ll_val << '\n';
+  mhsampler(proposal_width, init_guess, prior_mu, prior_sd, sp_dat, 10);
 
 
 //
