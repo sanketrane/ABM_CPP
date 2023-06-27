@@ -7,19 +7,6 @@
 #include <cmath>
 #include <string>
 
-// printing elements of a vector
-template <typename S>
-void print_vector(const std::vector<S>& vector,
-                 std::string sep = " ")
-{
-    // Iterating vector by using index
-    for (int i = 0; i < vector.size(); i++) {
-        // Printing the element at
-        // index 'i' of vector
-        std::cout << vector[i] << sep;
-    }
-    std::cout << '\n';
-}
 
 // generatting samples from a uniform distribution with between range_from and range_to
 template<typename T>
@@ -36,6 +23,14 @@ T randnorm(T mean, T sd) {
     std::random_device                  rand_dev;                       // stock random number libraries
     std::mt19937                        generator(rand_dev());          // use the mersenne twister as the underlying RN generator
     std::normal_distribution<T>         distr(mean, sd);
+    return distr(generator);
+}
+
+// generatting samples from a univariate normal distribution with mean=mean and sd=sd
+int randbinom(int nTrials , float prob) {
+    std::random_device                  rand_dev;                       // stock random number libraries
+    std::mt19937                        generator(rand_dev());          // use the mersenne twister as the underlying RN generator
+    std::binomial_distribution<int>         distr(nTrials, prob);
     return distr(generator);
 }
 
@@ -74,3 +69,18 @@ arma::vec dmvnrm_arma(arma::mat const &x,
       return out;
     return exp(out);
 }
+
+// printing elements of a vector
+template <typename S>
+void print_vector(const std::vector<S>& vector,
+                 std::string sep = " ")
+{
+    // Iterating vector by using index
+    for (int i = 0; i < vector.size(); i++) {
+        // Printing the element at
+        // index 'i' of vector
+        std::cout << vector[i] << sep;
+    }
+    std::cout << '\n';
+}
+
